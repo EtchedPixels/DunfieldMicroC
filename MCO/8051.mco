@@ -1,0 +1,186 @@
+/*
+ * Peephole optimization table for 8051
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1991-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* Data movement optimizations */
+" MOV \200,A\n MOV A,\200",
+" MOV \200,A",
+
+" MOV \200,A\n MOV \201,B\n MOV A,\200\n MOV B,\201",
+" MOV \201,B\n MOV \200,A",
+
+" MOV DPTR,\200\n MOVX [DPTR],A\n MOV DPTR,\200\n MOVX A,[DPTR]",
+" MOVX [DPTR],A\n MOV DPTR,\200",
+
+" MOV DPTR,\200\n MOVX [DPTR],A\n INC DPTR\n XCH A,B\n MOVX [DPTR],A\n XCH A,B\n MOV DPTR,\200\n MOVX A,[DPTR]\n INC DPTR\n MOV B,A\n MOVX A,[DPTR]\n XCH A,B",
+" XCH A,B\n MOVX [DPTR],A\n XCH A,B\n INC DPTR\n MOVX [DPTR],A\n MOV DPTR,\200",
+
+" MOV R1,\200\n MOV R2,\201\n MOV A,R1\n MOV B,R2",
+" MOV B,\201\n MOV A,\200",
+
+" MOV A,\200\n MOV B,\201\n MOV R1,A\n MOV R2,B",
+" MOV R2,\201\n MOV R1,\200",
+
+" XCH A,B\n PUSH A\n PUSH B",
+" PUSH A\n PUSH B",
+
+" MOV A,\200\n INC A\n MOV \200,A",
+" MOV A,\200\n INC \200",
+
+" MOV A,\200\n DEC A\n MOV \200,A",
+" MOV A,\200\n DEC \200",
+
+" INC \200\n MOV A,\200\n DEC A",
+" INC \200\n MOV A,\200",
+
+" DEC \200\n MOV A,\200\n INC A",
+" DEC \200\n MOV A,\200",
+
+" PUSH ?R\210\n PUSH ?R\211\n POP DPH\n POP DPL",
+" MOV DPH,R\211\n MOV DPL,R\210",
+
+/* Structure access */
+" MOV R1,#\200\n MOV R2,#=\201\n MOV A,#\202\n MOV B,#\203\n LCALL ?addi",
+" MOV R2,#=(\201+\202+=\203)\n MOV R1,#\200+\202+=\203",
+
+" MOV R1,#\200\n MOV R2,#=\201\n PUSH A\n PUSH B\n MOV A,#\202\n MOV B,#\203\n LCALL ?addi",
+" PUSH B\n PUSH A\n MOV R2,#=(\201+\202+=\203)\n MOV R1,#\200+\202+=\203",
+
+" MOV R1,#\200\n MOV R2,#=\201\n LCALL ?addi\n MOV A,#\202\n MOV B,#\203\n LCALL ?addi",
+" LCALL ?addi\n MOV R2,#=(\201+\202+=\203)\n MOV R1,#\200+\202+=\203",
+
+" MOV R1,#\200\n LCALL ?auto1\n MOV A,#\201\n MOV B,#\202\n LCALL ?addi",
+" LCALL ?auto1\n MOV R1,#\200+\201",
+
+" MOV R1,#\200\n LCALL ?auto1\n PUSH A\n PUSH B\n MOV A,#\201\n MOV B,#\202\n LCALL ?addi",
+" PUSH B\n PUSH A\n LCALL ?auto1\n MOV R1,#\200+\201",
+
+" MOV R1,#\200\n LCALL ?auto1\n LCALL ?addi\n MOV A,#\201\n MOV B,#0\n LCALL ?addi",
+" LCALL ?addi\n LCALL ?auto1\n MOV R1,#\200+\201",
+
+" MOV R7,#\200\n LCALL ?idxex1\n MOV A,#\201\n MOV B,#\202\n LCALL ?addi",
+" LCALL ?idxex2\n MOV R7,#\200+\201+=\202\n MOV R6,#=(\201+=\202)",
+
+" MOV R7,#\200\n LCALL ?idxex1\n PUSH A\n PUSH B\n MOV A,#\201\n MOV B,#\202\n LCALL ?addi",
+" PUSH B\n PUSH A\n LCALL ?idxex2\n MOV R7,#\200+\201+=\202\n MOV R6,#=(\201+=\202)",
+
+" MOV R7,#\200\n LCALL ?idxex1\n LCALL ?addi\n MOV A,#\201\n MOV B,#\202\n LCALL ?addi",
+" LCALL ?addi\n LCALL ?idxexi\n MOV R7,#\200+\201+=\202\n MOV R6,#=(\201+=\202)",
+
+/* jump optimizations */
+" LCALL ?adjstk\n RET",
+" LJMP ?exit",
+
+" LCALL \200\n RET",
+" LJMP \200",
+
+" LJMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" LJMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" J\200 \203\n LJMP \201\n\203 EQU *\n LJMP \202\n\201 EQU *",
+"\201 EQU *\n LJMP \202\n\203 EQU *\n J\240 \201",
+
+" J\200 \203\n LJMP \201\n\203 EQU *\n SJMP \202",
+" LJMP \201\n J\200 \202",
+
+" J\200 \201,\204\n LJMP \202\n\204 EQU *\n LJMP \203\n\202 EQU *",
+"\202 EQU *\n LJMP \203\n\204 EQU *\n J\240 \201,\202",
+
+" J\200 \201,\204\n LJMP \202\n\204 EQU *\n SJMP \203",
+" LJMP \202\n J\200 \201,\203",
+
+/* -- Old jump optimizations -- No longer used
+	" J\200 *+5\n LJMP \201\n LJMP \202\n\201 EQU *",
+	"\201 EQU *\n LJMP \202\n J\240 \201",
+
+	" J\200 *+5\n LJMP \201\n SJMP \202",
+	" LJMP \201\n J\200 \202",
+
+	" J\200 \201,*+6\n LJMP \202\n LJMP \203\n\202 EQU *",
+	"\202 EQU *\n LJMP \203\n J\240 \201,*+6",
+
+	" J\200 \201,*+6\n LJMP \202\n SJMP \203",
+	" LJMP \202\n J\200 \201,\203", */
+
+/* Misc optimizations */
+" MOV A,#0",				" CLR A",
+" CLR A\n MOV B,#0",		" MOV B,A\n CLR A",
+" MOV \200,\200",			"",
+" LCALL nargs",				"",
+
+" MOV A,\200\n MOV B,\200",
+" MOV B,A\n MOV A,\200",
+
+" CLR A\n MOV B,A\n PUSH A\n PUSH B",
+" PUSH A\n PUSH A\n CLR A",
+
+" MOV A,\200\n INC A\n MOV \200,A\n MOV A,\201",
+" MOV A,\201\n INC \200",
+
+" MOV A,\200\n DEC A\n MOV \200,A\n MOV A,\201",
+" MOV A,\201\n DEC \200",
+
+" MOV A,\200\n MOV B,\201\n PUSH A\n PUSH B\n MOV A,\202\n MOV B,\201",
+" MOV A,\202\n PUSH B\n PUSH A\n MOV B,\201\n MOV A,\200",
+
+/* Conditional optimizations */
+" LCALL ?eq\n ORL A,B", " LCALL ?eq",
+" LCALL ?ne\n ORL A,B", " LCALL ?ne",
+" LCALL ?lt\n ORL A,B", " LCALL ?lt",
+" LCALL ?le\n ORL A,B", " LCALL ?le",
+" LCALL ?gt\n ORL A,B", " LCALL ?gt",
+" LCALL ?ge\n ORL A,B", " LCALL ?ge",
+" LCALL ?ult\n ORL A,B", " LCALL ?ult",
+" LCALL ?ule\n ORL A,B", " LCALL ?ule",
+" LCALL ?ugt\n ORL A,B", " LCALL ?ugt",
+" LCALL ?uge\n ORL A,B", " LCALL ?uge",
+
+/* Bit test substitutions */
+" MOV A,\200\n ANL A,#1\n JNZ \201", " JB A.0,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#1\n JZ \201", " JNB A.0,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#2\n JNZ \201", " JB A.1,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#2\n JZ \201", " JNB A.1,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#4\n JNZ \201", " JB A.2,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#4\n JZ \201", " JNB A.2,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#8\n JNZ \201", " JB A.3,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#8\n JZ \201", " JNB A.3,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#16\n JNZ \201", " JB A.4,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#16\n JZ \201", " JNB A.4,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#32\n JNZ \201", " JB A.5,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#32\n JZ \201", " JNB A.5,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#64\n JNZ \201", " JB A.6,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#64\n JZ \201", " JNB A.6,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#128\n JNZ \201", " JB A.7,\201\n MOV A,\200",
+" MOV A,\200\n ANL A,#128\n JZ \201", " JNB A.7,\201\n MOV A,\200",
+
+" MOV A,P0\n J\200B A.\201,\202", " J\200B P0.\201,\202",
+" MOV A,P1\n J\200B A.\201,\202", " J\200B P1.\201,\202",
+" MOV A,P2\n J\200B A.\201,\202", " J\200B P2.\201,\202",
+" MOV A,P3\n J\200B A.\201,\202", " J\200B P3.\201,\202",
+" MOV A,SCON\n J\200B A.\201,\202", " J\200B SCON.\201,\202",
+" MOV A,PSW\n J\200B A.\201,\202", " J\200B PSW.\201,\202",
+" MOV A,IP\n J\200B A.\201,\202", " J\200B IP.\201,\202",
+" MOV A,IE\n J\200B A.\201,\202", " J\200B IE.\201,\202",
+" MOV A,TCON\n J\200B A.\201,\202", " J\200B TCON.\201,\202",
+" MOV A,T2CON\n J\200B A.\201,\202", " J\200B T2CON.\201,\202",
+" MOV A,_\200\n J\201B A.\202,\203", " J\201B _\200.\202,\203",
+
+" MOV R\210,[R\211]",	" MOV ?R\210,[R\211]",
+
+0 };
+
+/* Table of compliments */
+char *not_table[] = {
+	"Z",	"NZ",
+	"B",	"NB",
+0 };

@@ -1,0 +1,143 @@
+/*
+ * Peephole optimization table for AVR
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1998-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+#define	LIMIT1	63
+#define	LIMIT2	31
+char *peep_table[] = {
+
+/* Redundant load elimination */
+" ST\200 \201,\202\n LD\200 \202,\201",
+" ST\200 \201,\202",
+
+" ST\200 \201,\202\n ST\200 \203,\204\n LD\200 \202,\201\n LD\200 \204,\203",
+" ST\200 \203,\204\n ST\200 \201,\202",
+
+" LDI R24,\220\n LDI R25,0\n ADD R30,R24\n ADC R31,R25",
+" ADIW Z,\200",
+
+" LDI R24,\220\n LDI R25,0\n ADIW Z,\201\n ADD R30,R24\n ADC R31,R25",
+" ADIW Z,\201\n ADIW Z,\200",
+
+" ADIW \200,\231\n ADIW \200,\232",
+" ADIW \200,\201+\202",
+
+" LDI R24,\203\n LDI R25,\204\n LD\200 R30,\201\n LD\200 R31,\202",
+" LDI R25,\204\n LDI R24,\203\n LD\200 R31,\202\n LD\200 R30,\201",
+
+" LDI R24,\203\n LDI R25,\204\n MOV R30,R28\n MOV R31,R29",
+" LDI R25,\204\n LDI R24,\203\n MOV R31,R29\n MOV R30,R28",
+
+" LD\200 R30,\201\n LD\200 R31,\202\n MOV R24,R30\n MOV R25,R31",
+" LD\200 R25,\202\n LD\200 R24,\201",
+
+" MOV R30,R28\n MOV R31,R29\n ADIW Z,\200\n MOV R24,R30\n MOV R25,R31",
+" ADIW W,\200\n MOV R25,R29\n MOV R24,R28",
+
+" MOV R24,R30\n MOV R25,R31\n \200 W,\211\n MOV R30,R24\n MOV R31,R25",
+" \200 Z,\201",
+
+" LDI R30,\200\n LDI R31,=\200\n LDI R24,\201\n LDI R25,=\201\n ADD R30,R24\n ADC R31,R25",
+" LDI R31,=(\200+\201)\n LDI R30,\200+\201",
+
+" LDI R24,\200\n LDI R25,=\200\n ADIW Z,\201\n ADD R30,R24\n ADC R31,R25",
+" ADC R31,R25\n ADD R30,R24\n LDI R25,=(\200+\201)\n LDI R24,\200+\201",
+
+/* Jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" BR\240 \201\n JMP \202\n\201 EQU *\n JMP \203\n\202 EQU *",
+"\202 EQU *\n JMP \203\n BR\240 \202",
+
+" BR\200 \201\n JMP \202\n\201 EQU *\n RJMP \203",
+" JMP \202\n BR\200 \203",
+
+/* Pointer referencing optimizations */
+" ADIW W,\200\n ST\205 \201,R24\n ST\205 \202,R25\n SBIW W,\200\n MOV \203,R24\n MOV \204,R25",
+" ST\205 \202,R25\n ST\205 \201,R24\n ADIW W,\200\n MOV \204,R25\n MOV \203,R24",
+
+" SBIW W,\200\n ST\205 \201,R24\n ST\205 \202,R25\n ADIW W,\200\n MOV \203,R24\n MOV \204,R25",
+" ST\205 \202,R25\n ST\205 \201,R24\n SBIW W,\200\n MOV \204,R25\n MOV \203,R24",
+
+/* Compare optimizations */
+" LD\200 R24,\201\n CALL ?sign\n LD\202 R22,\203\n CALL ?psign\n CALL ?\204\n BR\245 \206\n JMP \207",
+" JMP \207\n-\204\205 \206\n CP R24,R22\n LD\202 R22,\203\n LD\200 R24,\201",
+
+" LD\200 R24,\201\n CALL ?sign\n LD\202 R22,\203\n LDI R23,0\n CALL ?\204\n BR\245 \206\n JMP \207",
+" JMP \207\n-\204\205 \206\n CP R24,R22\n LD\202 R22,\203\n LD\200 R24,\201",
+
+" LD\200 R24,\201\n CALL ?sign\n LDI R22,\203\n LDI R23,=\203\n CALL ?\204\n BR\245 \206\n JMP \207",
+" JMP \207\n-\204\205 \206\n CP R24,R22\n LDI R22,\203\n LD\200 R24,\201",
+
+" LD\200 R24,\201\n LDI R25,0\n LDI R22,\203\n LDI R23,=\203\n CALL ?\204\n BR\245 \206\n JMP \207",
+" JMP \207\n-\204\205 \206\n CP R24,R22\n LDI R22,\203\n LD\200 R24,\201",
+
+" LD\200 R24,\201\n LDI R25,0\n LD\202 R22,\203\n LDI R23,0\n CALL ?\204\n BR\245 \206\n JMP \207",
+" JMP \207\n-\204\205 \206\n CP R24,R22\n LD\202 R22,\203\n LD\200 R24,\201",
+
+" CALL ?not\n BR\200",
+" br\200\n CALL ?not",
+
+" CALL ?\200\n BR\241 \202\n JMP \203",
+" JMP \203\n-\200\201 \202\n CPC R25,R23\n CP R24,R22",
+
+"-eqNE \200",	" BREQ \200",
+"-eqEQ \200",	" BRNE \200",
+"-neNE \200",	" BRNE \200",
+"-neEQ \200",	" BREQ \200",
+"-ltNE \200",	" BRLT \200",
+"-ltEQ \200",	" BRGE \200",
+"-leNE \200",	" BRLE \200",
+"-leEQ \200",	" BRGT \200",
+"-gtNE \200",	" BRGT \200",
+"-gtEQ \200",	" BRLE \200",
+"-geNE \200",	" BRGE \200",
+"-geEQ \200",	" BRLT \200",
+"-ultNE \200",	" BRLO \200",
+"-ultEQ \200",	" BRSH \200",
+"-uleNE \200",	" BRSL \200",
+"-uleEQ \200",	" BRHI \200",
+"-ugtNE \200",	" BRHI \200",
+"-ugtEQ \200",	" BRSL \200",
+"-ugeNE \200",	" BRSH \200",
+"-ugeEQ \200",	" BRLO \200",
+
+" BRLE \200",	" BREQ \200\n BRLT \200",
+" BRGT \200",	" BRGE \200\n BREQ *+4",
+" BRSL \200",	" BREQ \200\n BRLO \200",
+" BRHI \200",	" BRSH \200\n BREQ *+4",
+
+" LD\200 R24,\201\n LDI R22,\202\n CP R24,R22",
+" CPI R24,\202\n LD\200 R24,\201",
+
+/* Misc. optimizations */
+" ADIW \200,0",											"",
+" MOV \200,\200",										"",
+" CALL nargs",											"",
+" CALL \200\n RET",										" JMP \200",
+" ST -Y,\200\n ST -Y,\201\n LD \201,Y+\n LD \200,Y+",	"",
+
+" LDI R24,0\n LDI R25,0\n ST -Y,R25\n ST -Y,R24",
+" ST -Y,R24\n ST -Y,R24\n LDI R24,0",
+
+0 };
+
+char *not_table[] = {
+	"EQ",	"NE",
+	"LO",	"SH",
+	"LT",	"GE",
+	"LE",	"GT",
+	"SL",	"HI",
+0 };

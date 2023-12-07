@@ -1,0 +1,775 @@
+
+
+
+
+
+
+          ===========================================================
+                DDDDD           DDDDD               SSSS
+                 D   Dunfield    D   D             S
+                 D   D           D   Development    SSSS
+                 D   D           D   D                  Services
+                DDDDD           DDDDD               SSSS
+          ===========================================================
+          MM   MM  IIIIIII    CCCC   RRRRRR     OOO             CCCC
+          M M M M     I      C    C  R     R   O   O           C    C
+          M  M  M     I     C        R     R  O     O         C
+          M     M     I     C        RRRRRR   O     O  -----  C
+          M     M     I     C        R   R    O     O         C
+          M     M     I      C    C  R    R    O   O           C    C
+          M     M  IIIIIII    CCCC   R     R    OOO             CCCC
+          ===========================================================
+
+
+                             A compact 'C' compiler
+                                      for
+                                 Small Systems.
+
+
+                                 Porting Guide
+
+
+                                  Release 3.23
+
+                               Revised 01-Nov-02
+
+
+
+
+
+
+
+                         Dunfield Development Services
+                         -----------------------------
+                             High quality tools for
+                              Embedded Development
+                                 at low prices.
+
+                            http://www.dunfield.com
+
+
+                       ?COPY.TXT 1988-2005 Dave Dunfield
+                              **See COPY.TXT**
+
+
+
+                             MICRO-C Porting Guide
+
+                               TABLE OF CONTENTS
+
+
+                                                                         Page
+
+     1. INTRODUCTION                                                        1
+
+
+     2. PORTING THE COMPILER (MCC)                                          1
+
+        2.1 The "io" module                                                 1
+        2.2 The "code" module                                               3
+        2.3 The "compile" module                                            9
+        2.4 Porting without a linker                                       10
+        2.5 Optimization Techniques                                        10
+
+     3. PORTING THE OPTIMIZER (MCO)                                        13
+
+    MICRO-C Porting Guide                                            Page: 1
+
+
+    1. INTRODUCTION
+
+          Dunfield Development Services (DDS)  MICRO-C is a compact portable
+       compiler which may be easily moved to new  host  systems,  or  target
+       CPU's.
+
+          There are two major goals to accomplish when porting  the  MICRO-C
+       compiler to a new machine.  The first is to make the compiler run  in
+       the new environment,  and the second is to make it produce  code  for
+       that environment.
+
+          These two goals do not always go hand in hand. For example, it may
+       be desirable to implement a CROSS COMPILER which generates code for a
+       different system from that on which it runs.
+
+          The usual method of porting a compiler to system A when a  version
+       of the compiler is already running on system B,  is to first create a
+       compiler which runs on system B,  producing code for system  A.  This
+       "new"  compiler may then be used to create a compiler which  runs  on
+       system A.
+
+    2. PORTING THE COMPILER (MCC)
+
+          The  MICRO-C  compiler  consists  of  a  module  "compile"   which
+       contains,  the  main  compiler,  input  scanner,  regular  expression
+       parser,  and symbol table management routines.  This is the  "static"
+       portion  of  the  compiler  which  does  not  change   in   different
+       implementations.
+
+          To create a working compiler,  the above module must  be  compiled
+       and linked with an "io"  module and "code"  module.  The "io"  module
+       performs the necessary initialization and I/O to allow  the  compiler
+       to run in a particular  environment  (goal  #1).  The  "code"  module
+       generates  the  assembly  language  output  code  for  a   particular
+       environment (goal #2).
+
+          The compiler uses NO system library functions,  and relies  on  NO
+       system services  (other than  those  used  by  the  "io"  and  "code"
+       modules).  This allows the compiler to be  ported  to  virtually  any
+       system.
+
+          All fixed compiler  parameters  (such  as  table  sizes  etc)  are
+       contained in the header file  "compile.h".  When porting  to  systems
+       with very limited RAM (less than 64k), you may have to reduce some of
+       these sizes in order to get it to fit.
+
+       2.1 The "io" module
+
+             The  "io"  module required by the  compiler  must  contain  the
+          following function definitions:
+    MICRO-C Porting Guide                                            Page: 2
+
+
+             The function  "main()"  is called by the operating system  when
+          the MICRO-C compiler is executed.  It is responsible  for  parsing
+          any parameters and  command  qualifiers,  opening  the  input  and
+          output files,  performing any other initializations that might  be
+          required,  and then invoking  the  function  "compile()"  with  no
+          arguments.  The program filename should also be  copied  into  the
+          array 'file_names' found in compile.c.  The "compile"  function is
+          internal to the  "compile.c"  module,  and will never return.  For
+          UNIX and other systems which support I/O redirection,  "stdin" and
+          "stdout" are often used for the input and output files.
+
+             The function  "terminate(rc)"  is called when the compiler  has
+          finished all processing and wishes to terminate. The value "rc" is
+          a return code: 0 = Success,  program compiled without error,  -1 =
+          Compile was aborted due to severe errors,  n =  Compile  finished,
+          but had 'n' errors.
+
+             The function  "put_chr(chr,  flag)"  is passed a  character  to
+          output,  as well as a flag.  The flag will always be zero when the
+          character is being sent to the console terminal,  or non-zero when
+          the character is to be written to the output file.
+
+             The function  "put_str(*ptr,  flag)"  is passed a pointer to  a
+          zero terminated string,  which is to be written to the console  or
+          output file as determined by "flag".
+
+             The function "put_num(number, flag)" is passed a 16 bit number,
+          which is to be written in printable form to the console or  output
+          file as determined by "flag".
+
+             The function "get_lin(*ptr)" is passed a pointer to a character
+          array, and should read a single line from the currently open input
+          file into that array.  The manifest definition "LINE_SIZE",  found
+          in  "compile.h"  may be used to determine the maximum line  length
+          acceptable to the compiler.  Return of a non-zero value  indicates
+          the end of file condition.
+
+             The function "f_open(*ptr)"  is passed a pointer to a filename.
+          The new file should be opened,  and if successful,  the old  input
+          file should remain open and be "stacked",  so that it can be later
+          returned to, and a non-zero value returned. A zero value indicates
+          to the compiler that the file could not be opened.
+
+             The  function  "f_close()"  is  responsible  for  closing   the
+          currently  open  input  file,  and  returning  to  the   "stacked"
+          previously open one.  It receives no  parameters.  Note:  multiple
+          "opens"  may  be  stacked  -  see  the  manifest   definition   of
+          "INCL_DEPTH" in the "compile.h" file.
+    MICRO-C Porting Guide                                            Page: 3
+
+
+          2.1.1 Notes on I/O module
+
+             - It is the responsibility of the  "put"  routines to translate
+               the  NEWLINE  '\n'  (0x0a)  character  into   whatever   line
+               termination character(s) are required by the target operating
+               system.
+
+             - If unix  "stdin"  and  "stdout"  are  not  used,  it  is  the
+               responsibility  of  "main"  to  display   appropriate   error
+               messages if the input or output files could not be opened.
+
+                Refer to  the  sample  "io"  modules  distributed  with  the
+             compiler.
+
+       2.2 The "code" module
+
+             In order to insure that MICRO-C is portable  to  virtually  any
+          environment,  the  compiler  makes  few  assumptions   about   the
+          processor or system software of  the  target  system.  The  "code"
+          module is relied  on  to  produce  all  machine  instructions  and
+          assembler directives written to the output file.
+
+             The only two real "assumptions" made about the target processor
+          are:
+
+          - It is assumed that the target  processor  has  an  "accumulator"
+            register in which all math operations are  performed,  and  that
+            the lower 8 bits of this register may be accessed independently.
+
+          - It is assumed that the target processor has one "index" register
+            which may be loaded  with  a  16  bit  value,  and  that  memory
+            references may be made indirectly through this register.
+
+             If the target processor does not support the above features, it
+          may be possible to write a code generator for it using some  other
+          features of the processor.
+
+             For example,  if an  "index"  register does not exist,  it  may
+          often be implemented using two bytes of reserved memory.
+
+             The code  generation  module  required  by  the  compiler  must
+          contain the following function definitions:
+
+             The function  "do_comment(*ptr)"  is  passed  a  pointer  to  a
+          character string,  which is should write to the output file  as  a
+          single line COMMENT  (used by '-c' option).  This function is also
+          called with a NULL  (0)  pointer anytime  the  compiler  wants  to
+          insure that the code generator is reset to begin  a  new  line  of
+          output.
+
+             The function "do_asm(*ptr)"  is passed a pointer to a character
+          string,  which it should write to the output file as a single line
+          STATEMENT (used for inline assembly language).
+    MICRO-C Porting Guide                                            Page: 4
+
+
+             The function  "def_module()"  is called  at  the  beginning  of
+          compilation, before any other code generator functions are called.
+          It is used to output any pre-amble needed by the assembler.
+
+             The function  "end_module()"  is called  at  the  very  end  of
+          compilation, and is the last code generator function called. It is
+          used to output any post-amble needed by the assembler.
+
+             The function  "def_static(symbol,  ssize)"  is passed am  index
+          into the compiler symbol tables for a global  variable,  which  is
+          about to be initialized  as  static  storage.  The  call  to  this
+          function will be immediately followed by a call  to  "init_static"
+          or  "end_static".  The  "ssize"  parameter will be non-zero if the
+          variable is a structure or union.
+
+             The  "init_static(token,  value,  word)"  function is passed  a
+          token and value,  with which it should initialize a single element
+          of static storage.  The "word"  flag will be non-zero if the value
+          is a 16 bit element.  Only the "constant" tokens (NUMBER,  STRING,
+          LABEL) and SYMBOL need be handled by this routine.  When SYMBOL is
+          used,  the  constant  ADDRESS  of  the  passed  symbol  should  be
+          generated.
+
+             The  "end_static()"  function  is  called  to   terminate   the
+          definition of static storage.
+
+             NOTE:  "init_static"  should not  rely  on  "def_static"  being
+          called first,  since  it  is  also  called  immediately  following
+          "def_label" to define "switch" tables (See "do_switch"). After the
+          table  is  defined,  the  compiler  will  call  "end_static()"  to
+          terminate the initialization and set up for the next.
+
+             The function "def_global(symbol, size)" is called at the end of
+          the compile,  once for each non-static global variable  which  was
+          defined.  The  "size"  parameter indicates the number of BYTES  of
+          memory to be reserved for that variable.
+
+             The function  "def_extern(symbol)"  is called at the end of the
+          compile,  once for  each  unresolved  external  symbol  which  was
+          defined.  This routine should examine the type of the  symbol  and
+          output the appropriate assembler directives  to  allow  it  to  be
+          referenced in another module.
+
+             The  "def_func(symbol,  size)"  routine is called  to  start  a
+          function definition.  The "symbol"  parameter is an index into the
+          compiler symbol tables for the function entry being  defined.  The
+          "size"  parameter indicates how many bytes  of  memory  should  be
+          allocated  on  the  stack  for  local  variables.  When   defining
+          "register"  functions,  care must be taken  that  the  entry  code
+          preserves the contents of the accumulator.
+
+             The  "end_func()"  routine is called to  terminate  a  function
+          definition.  It  should  remove  anything  placed  on  the   stack
+          (including the local variable space allocated by "def_func"),  and
+          terminate the function with a "return" instruction.
+    MICRO-C Porting Guide                                            Page: 5
+
+
+             The "def_label(label)" function is called whenever the compiler
+          wants to generate a label in the output file. Each label generated
+          by the compiler is identified by a 16 bit unsigned number.  It  is
+          up to the code generator to generate a unique label  suitable  for
+          the target assembler.
+
+             The "def_literal(*ptr,  size)" function is called at the end of
+          the  compile,  just  before  non-initialized  global  symbols  are
+          generated.  This routine is  given  a  pointer  to  the  compilers
+          "literal pool", which contains all the character strings occurring
+          during the compilation.  The  "size"  parameter indicates how many
+          characters are in the pool.  This pool must be  generated  in  the
+          output file as a string of byte constants.
+
+             The  "call(token,  value,  type,  clean)"  function is used  to
+          generate  a  machine  language  subroutine  call  to  the   entity
+          indicated by the "token, value & type" parameters (See later). The
+          "clean" parameter indicates how many entries were pushed on to the
+          stack as arguments, which should be removed following the function
+          call.  Note:  Since  stack  entries  are   TWO   bytes   in   most
+          implementations,  the  "clean"  value must be multiplied by two to
+          get the actual number of bytes to be removed from the stack.
+
+             The function  "jump(label,  ljmp)"  is called  to  generate  an
+          unconditional jump instruction to the indicated compiler generated
+          label.  The "ljmp" flag will be set to zero if the jump references
+          code within the same expression from which it  is  generated,  and
+          non-zero if one or more statements may occur between the jump  and
+          the destination label.  This allows the  code  generator  to  take
+          advantage of "short" jumps if they are available on the target.
+
+             The function "jump_if(cond, label,  ljmp) is called to generate
+          a conditional jump to a compiler generated label. The "cond" value
+          indicates the condition: FALSE = Jump if accumulator is zero, TRUE
+          = jump if accumulator is non-zero.  Remaining parameters  are  the
+          same as above.
+
+             The function  "do_switch(label)"  is passed the  address  of  a
+          "switch"  table,  which contains 16 bit entries,  and  is  of  the
+          following format:
+
+                        label-1, value-1, label-2, value-2, ....
+                        label-n, value-n, 0, default_label
+
+             This routine should search the table for the value currently in
+          the accumulator,  and if found,  it should proceed  to  the  label
+          associated with that value.  If the value is not found before  the
+          end of the table is encountered  (identified by a label  value  of
+          zero),  execution should proceed  at  the  address  identified  by
+          "default_label".
+
+             The  "index_ptr(token,  value,  type)"  routine should load the
+          index register with the value  of  the  entity  indicated  by  the
+          "token,  value & type"  parameters.  This will always be a 16  bit
+          wide quantity.
+    MICRO-C Porting Guide                                            Page: 6
+
+
+             The  "index_adr(token,  value,  type)"  routine should load the
+          index register with the 16 bit address of the  object  represented
+          by "token,  value & type".  The only tokens passed to this routine
+          are SYMBOL and ION_STACK.
+
+             The  routine  "expand(type)"  may  be  called   following   the
+          evaluation of an expression, and is used to insure that the result
+          is a 16 bit value.
+
+             The routine  "accop(oper,  type)"  is called to perform  a  "no
+          operand" operation on the accumulator.  See "compile.h" for a list
+          of these operations. The "type" passed indicates the type of value
+          expected as a result.
+
+             The routine "accval(oper, rtype, token, value, type)" is called
+          to perform a  "one operand"  operation  on  the  accumulator.  See
+          "compile.h" for a list of these operations.  "rtype" indicates the
+          type of value expected as a result.  "token",  "value"  and "type"
+          indicate  the  location  and  type  of  operand  which  is   being
+          processed.
+    MICRO-C Porting Guide                                            Page: 7
+
+
+          2.2.1 Notes on code generation
+
+                The meaning of the individual bits  in  the  16  bit  "type"
+             value which is passed to many of the code generation  routines,
+             is documented in the "compile.h" file.
+
+                The meaning of  "token"  is documented  in  the  "compile.h"
+             file.  For each  type  of  "token",  "value"  has  a  different
+             meaning:
+
+                Token           Meaning of "value"
+                ----------------------------------------------------------
+                NUMBER          The numeric value of the constant.
+                STRING          The offset into the literal pool.
+                LABEL           The value of the compiler generated label.
+                SYMBOL          Index into global symbol tables.
+                All others      Undefined.
+
+                When token is a SYMBOL,  the "value" passed is used to index
+             into the global symbol tables  (contained within the  "compile"
+             module)  to determine  information  about  the  variable.  When
+             "value"  is less  than  the  value  of  the  compiler  internal
+             variable  'global_top',  the symbol is GLOBAL,  otherwise it is
+             LOCAL:
+
+                s_name[value]   - Name of symbol (up to SYMBOL_SIZE chars)
+                s_type[value]   - Type of symbol (bits defined in "compile.h").
+                s_index[value]  - Variable index:
+                        Local (auto):   Stack offset from def_func.
+                        Argument:       Stack offset from last argument pushed.
+                        Static:         Unique variable number for symbol.
+
+                When calculating the stack offset for  ARGUMENTs,  you  must
+             add the number of bytes placed on the stack when  the  function
+             was called.  This includes  the  local  variables,  the  return
+             address, and any other values that "def_func" might push.
+
+                There are two popular ways of  providing  addressability  to
+             local variables:
+
+                If the processor has many registers,  you can reserve one as
+             a "base" pointer, and point it at the top of the stack when the
+             function  is  entered.  This  allows  local  variables  to   be
+             referenced as negative offsets from that "base"  register,  and
+             arguments to be referenced as positive offsets  from  it.  This
+             approach also allows the stack to  be  restored  directly  from
+             this base  register  when  the  function  terminates.  See  the
+             section on assembly language interfacing.
+
+                Another approach is to have the  code  generator  "remember"
+             exactly how many bytes have been pushed on to the  stack  since
+             "def_func",  and adjust the offsets it generates based  on  the
+             stack contents.  This has the  advantage  of  not  tying  up  a
+             register.
+    MICRO-C Porting Guide                                            Page: 8
+
+
+                If you intend to use the MICRO-C Source Linker (SLINK), then
+             you have to insure that whatever variable you use to  reference
+             the "literal pool"  qualifies as a "compiler generated"  label,
+             allowing SLINK to adjust it when processing the  source  files.
+             Compiler  generated  labels  normally  consist  of   a   single
+             character  (such as '?'),  followed by a decimal number.  Since
+             the compiler begins generating its labels with the  value  '1',
+             you may safely use '0' as the literal pool variable (Ie: '?0').
+
+                It is the responsibility of the code generator to keep track
+             of the validity  of  the  upper  8  bits  of  the  accumulator.
+             Appropriate sign extension or clearing of  high  bits  must  be
+             performed as necessary to convert signed and unsigned character
+             values when 16 bit results when required.
+
+                To improve the efficiency  of  conditional  statements,  the
+             code generator should keep track of the validity of the  "zero"
+             flag in the processors condition code  register,  and  generate
+             appropriate  "test"  instructions  only  if  necessary  when  a
+             conditional jump is compiled.
+
+                For  processors  not  supporting   operations   with   stack
+             contents, the "ON_STACK" and "ION_STACK" tokens may implemented
+             by first popping the top of the  stack  into  a  register.  The
+             "ISTACK_TOP"  token is a special case,  because the address  on
+             the top of the stack must  not  be  lost.  This  token  may  be
+             efficiently implemented,  because "ISTACK_TOP" is only used for
+             read/write operations to  a  stacked  calculated  address.  For
+             example:
+
+                            array1[i] += array2[i];
+
+                This statement calculates the address of "array1[i]" (in the
+             index register).  Since the  "index"  register is again used in
+             calculating the address of "array2[i]",  the first "index" will
+             be placed on the stack.  Once the contents of  "array2[i]"  are
+             retrieved,  it will  be  added  using  "ISTACK_TOP",  and  then
+             re-stored using "ION_STACK".
+
+                The  "ISTACK_TOP"  token may thus pop  the  address  into  a
+             register,  and set a flag indicating to the code generator that
+             the next  "ION_STACK"  token is to  go  through  that  register
+             rather than the top of the stack. Note that since an arithmetic
+             operation may be performed between the two references, you must
+             not use a register which is  modified  in  code  generated  for
+             arithmetic operations.
+
+                Refer to the sample code  generators  distributed  with  the
+             compiler.
+    MICRO-C Porting Guide                                            Page: 9
+
+
+       2.3 The "compile" module
+
+             The  "compile"  module contains the  main  statement  analyzer,
+          input scanner,  expression  parser  and  symbol  table  management
+          routines for the MICRO-C compiler.  This module is common  to  all
+          implementations, and should NOT require changes in most cases. The
+          source code for this module is contained in the  "compile.c"  file
+          on your distribution diskette,  and may be  examined  for  insight
+          into the internal operation of the compiler.
+
+             This module must be compiled and linked with your I/O and  code
+          generation routines to  generate  a  complete  executable  MICRO-C
+          compiler.
+
+             To test your code generator,  the  file  "test.c"  is  provided
+          which when compiled using the new compiler,  performs a number  of
+          simple tests  to  verify  your  code  generator.  This  is  not  a
+          comprehensive analysis,  as it  makes  no  assumptions  about  the
+          processor,  however,  it provides a good indication that your code
+          generator is on the right track.
+
+             A number of fixed parameters to the  compiler  (such  as  table
+          sizes etc.) are contained in the header file "compile.h". The most
+          common reason for changing  these  parameters  is  to  reduce  the
+          memory requirements,  in order to get MICRO-C  to  fit  into  very
+          small systems.
+
+             If any of the parameters in "compile.h" are to be changed,  you
+          must  make  the  changes  BEFORE  compiling  any  of  the  modules
+          (compile, io or codegen).
+
+             The file  "tokens.h"  contains  symbolic  definitions  for  the
+          tokens parsed by the  compiler,  the  text  of  which  is  in  the
+          character array variable "tokens". If you make any changes to this
+          token table,  MAKE SURE that the contents of the "tokens" variable
+          and the "tokens.h" file agree,  otherwise,  you will end up with a
+          compiler for a very strange language.
+
+          2.3.1 **NOTE for 32 bit compiler users
+
+                COMPILE.C has one potential portability  problem  if  it  is
+             compiled on a machine where  an  'int'  is  not  16  bits.  The
+             routine "skip_comment()"  uses a 16 bit 'int'  to hold the last
+             two characters from the source file,  in order to test for  the
+             "/*" and "*/" sequences.
+
+                If an 'int'  can contain more that TWO characters,  you must
+             modify this function so that only the last two  characters  are
+             retained.
+    MICRO-C Porting Guide                                            Page: 10
+
+
+       2.4 Porting without a linker
+
+             It is possible to port MICRO-C using a system  which  does  not
+          support a linker.  To do this, you must concatenate all the source
+          files "compile.c",  "code.c"  and "io.c"  into one large file  (in
+          that order), and compile them all as one program.
+
+             When this is done, the ".h" include files need only be included
+          once,  and external definitions of variables  occurring  in  other
+          source files should not  be  used.  The  source  programs  on  the
+          distribution disk all contain conditional  compilation  statements
+          (#ifndef),  which only perform the necessary #include and external
+          definition statements when compiling as a single file.
+
+       2.5 Optimization Techniques
+
+             The MICRO-C compiler performs the following machine independent
+          optimizations of the output file:
+
+          - All constant expressions are  evaluated  at  compile  time,  and
+            expressed as a single constant value in the output code.
+
+          - Commutative operations may be  reversed  to  take  advantage  of
+            partial  results  already  in  the  accumulator.  This  includes
+            operations which have an equivalent reverse  (ie:  "a>(b-1)" may
+            become "(b-1)<a").
+
+          - Redundant jumps as a result of "return"  or  "break"  statements
+            are suppressed.
+
+          - Redundant DEC/INC instructions as a result of the  use  of  post
+            ++/-- operators when the original  value  is  not  required  are
+            suppressed.
+
+          - The sense of jumps in conditional statements  are  reversed  for
+            logically negated expressions, code for '!' is only generated if
+            the value returned by that operator is actually used.
+
+          - Jumps between code generated  within  a  single  expression  are
+            flagged as "short".
+
+             Although the MICRO-C compiler produces fairly  reasonable  code
+          for the  processor  model  it  uses,  that  model  is  necessarily
+          limited,  in order that it might fit a large  number  of  physical
+          targets.  There are several  simple  optimizations  which  may  be
+          performed to further enhance the code generated by the compiler in
+          a specific implementation.
+    MICRO-C Porting Guide                                            Page: 11
+
+
+          2.5.1 Register Usage
+
+                MICRO-C assumes a single accumulator,  and  a  single  index
+             register.  Additional  terms  in  complicated  expressions  are
+             handled by placing temporary results on  the  processor  stack,
+             and reusing those registers.  All data placed on the  stack  is
+             accessed on a "last in - first out" basis.
+
+                If the target processor has a  full  compliment  of  general
+             purpose registers,  an optimization may be performed by  simply
+             selecting another general purpose register as  the  accumulator
+             or index register instead of placing the value  on  the  stack.
+             The code generator must  keep  track  of  the  order  in  which
+             registers are selected, and which register represents the "top"
+             of the stack.  If the number of  values  "pushed"  exceeds  the
+             number of available registers,  the "oldest" register should be
+             placed on the stack, thereby allowing it to be reused.
+
+          2.5.2 Jump Optimization
+
+                Although MICRO-C identifies jumps to instructions which span
+             more than one expression as  "long",  often the  addresses  are
+             close enough together that short jumps may  actually  be  used.
+             This optimization is particularly useful for processors such as
+             the 8086, which does not support "long" conditional jumps,  and
+             therefore must simulate them with a short conditional  jump  of
+             the opposite sense around a long unconditional jump.
+
+          2.5.3 Redundant Load Elimination
+
+                Since  MICRO-C  evaluates  and  processes   each   statement
+             individually,  it does  not  carry  partial  results  from  one
+             statement to another.
+
+                Consider the following statements:
+
+                                 a = x;
+                                 b = a + 1;
+
+                MICRO-C generates the code:
+
+                                 LOAD x
+                                 STORE a
+                                 LOAD a
+                                 ADD 1
+                                 STORE b
+
+                An optimization may be performed  by  recognizing  that  the
+             second "load" instruction is redundant,  and can be eliminated.
+             Note:  A more efficient  (but less readable)  way of coding the
+             above statements which would result in the latter code  without
+             optimization is:
+
+                                 b = (a = x) + 1;
+    MICRO-C Porting Guide                                            Page: 12
+
+
+          2.5.4 Peephole Optimization
+
+                Consider the statement:
+
+                                 a = *++ptr;
+
+                MICRO-C generates the code:
+
+                                 LOAD ptr
+                                 INCREMENT
+                                 STORE ptr
+                                 MOVE ACCUMULATOR TO INDEX
+                                 LOAD [INDEX]
+                                 STORE a
+
+                For a processor supporting  a  rich  set  of  direct  memory
+             addressing modes, the above sequence can be shortened to:
+
+                                 INCREMENT_MEMORY ptr
+                                 LOAD [ptr]
+                                 STORE a
+
+                One of the most  successful  techniques  of  optimizing  the
+             output code is also one of the simplest.  Known  as  "peephole"
+             optimization,  the method consists of keeping a window  of  the
+             last few instructions generated,  and  scanning  the  list  for
+             known patterns every time a new instruction is added to it.
+
+                As long as the instructions in the list at  least  partially
+             match one or more  of  the  "predefined"  patterns,  additional
+             instructions are collected  until  either  a  complete  pattern
+             match occurs, or all known patterns are eliminated.
+
+                If no matches occur,  the "oldest" instruction is written to
+             the output file,  and the next one becomes  the  first  in  the
+             "window".
+
+                Whenever a pattern is discovered,  it is replaced by  a  new
+             series of instructions which perform the same function,  but in
+             a more efficient manner.
+
+                The new instruction sequences  are  replaced  on  the  list,
+             which may then be  again  scanned,  allowing  further  possible
+             reductions to be discovered.
+
+                Handling of labels in the  "window"  and their corresponding
+             placement in the output file must be carefully done,  in  order
+             to preserve the "logical" context of the original code.
+    MICRO-C Porting Guide                                            Page: 13
+
+
+    3. PORTING THE OPTIMIZER (MCO)
+
+          The MICRO-C Optimizer is completely table driven,  and  is  fairly
+       easy to port to new processors.
+
+          The  peephole  optimization  table  is  called  'peep_table',  and
+       consists  of  two  sequential  character  string  entries  for   each
+       optimization, and is terminated by single NULL pointer.
+
+          The first is the  "take"  entry,  and  represents  an  instruction
+       sequence which (if found) is to be removed from the output file.  The
+       second is the "give" entry, and defines a sequence of instructions to
+       be placed in the output file at that point.  NOTE that due to the way
+       the optimizer  removes  and  replaces  instruction  in  the  circular
+       "peephole" buffer,  the instructions in the "give" entry ARE CODED IN
+       REVERSE ORDER.
+
+          Characters in the "take" entry with the high bit set  ('\200'  and
+       higher)  are special characters which represent any  variable  string
+       which may occur in the instruction sequence,  and  will  be  replaced
+       with the same string wherever that character  occurs  in  the  "give"
+       entry.  If the same special character (eg:  '\200')  occurs more than
+       once in the "take"  entry,  the corresponding strings must be exactly
+       the same or else the entire sequence will not be matched.
+
+          There may be up to 8 different such variable strings  within  each
+       entry,  the lower three bits ('\200'-\'207')  indicate which variable
+       is referenced.
+
+          The 4'th and 5'th bits  ('\23x')  when used  in  a  "take"  entry,
+       allows a match only if the variable string contains only the  numeric
+       digits  ('0'-'9').  If any other character  occurs,  the  instruction
+       sequence will not be matched.  If only the 4'th bit is set  ('\21x'),
+       the number from the source file is accepted unconditionally.  If only
+       the 5'th bit is set  ('\22x'),  the number will be recognized only if
+       it is <= the constant LIMIT1.  If both the 4'th and 5'th bits are set
+       ('\23x'), the number must be <= LIMIT2. These bits has no effect when
+       used in a "give" entry.
+
+          The 6'th bit ('\24x') causes the variable string to access through
+       the "complement" table (see later). When used in a "take" entry, this
+       bit allows a match only if the variable string occurs in that  table.
+       When used in a  "give"  entry,  causes the complementary string to be
+       output from the table.
+
+          The processor  will  stop  scanning  a  variable  string  when  it
+       encounters  the  character  which  immediately  follows  the  special
+       character in the "take" entry, or at the end of the input line.
+
+          There are cases in which you may not want the optimizer to further
+       reduce code substituted for a particular optimization.  In this case,
+       simply include a single character comment in the GIVE entry,  in such
+       a position as to prevent the optimizer from recognizing that with any
+       further TAKE entries.
+    MICRO-C Porting Guide                                            Page: 14
+
+
+          The optimizer also includes a "complement"  table,  which provides
+       the ability to define and use "opposites" within an optimization. The
+       most common use for this feature is in the processing of  conditional
+       jumps,  in cases when an optimization reverses the logical sense of a
+       jump.
+
+          The complement table is called  "not_table",  and contains an even
+       number of character string entries.  The table  is  terminated  by  a
+       single NULL pointer.  Each even/odd pair of entries in this table are
+       considered to be complementary strings. When a "give" entry specifies
+       that the complement of a variable string should be output, this table
+       is scanned,  and if the original string is found,  the  corresponding
+       complementary entry is output instead. If the string is not found, it
+       is output without modification.
+
+          Note that you do not have to access  the  complementary  table  in
+       both the "give"  and "take"  optimization entries.  For example,  you
+       could specify a "special character"  of '\241'  in the "take"  entry,
+       indicating that you are using  variable  location  1,  and  that  the
+       string must occur in the complement table.  You could then use "\201"
+       in the  "give"  entry to output the original  string,  or  "\241"  to
+       output the complement.

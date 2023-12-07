@@ -1,3 +1,13 @@
+Note: the original copy is under COPY.TXT, the derived code in this
+tree is GPLv3. You can obtain the original code from
+	https://dunfield.themindfactory.com/dnldsrc.htm
+should you wish to work on it from the original licence.
+
+I've chosen to do it this way to prevent any work tidying it up being abused
+and to ensure there is a clear No Warranty clause.
+
+
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

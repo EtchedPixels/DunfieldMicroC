@@ -1,0 +1,182 @@
+/*
+ * Peephole optimization table for 8096:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1991-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* data movement & register usage optimizations */
+" LD \200,\201\n ST \200,\201",		" LD \200,\201",
+" LDB \200,\201\n STB \200,\201",	" LDB \200,\201",
+
+" LD AX,\200\n LD CX,AX",
+" LD CX,\200",
+
+" LD SI,\200\n LD AX,SI",
+" LD AX,\200",
+
+" ADD SI,\BP,200\n LD AX,SI",
+" ADD AX,BP,\200",
+
+" LD AX,\200\n LD SI,AX",
+" LD SI,\200",
+
+" ADD AX,BP,\200\n LD SI,AX",
+" ADD SI,BP,\200",
+
+" PUSH AX\n ADD SI,BP,\200\n LD AX,SI\n POP DI\n ADD AX,DI",
+" ADD AX,SI\n ADD SI,BP,\200",
+
+" LD AX,\200\n PUSH AX",
+" PUSH \200",
+
+" POP DI\n LD AX,DI",
+" POP AX",
+
+/* Indexing and constant offsets */
+" LD AX,#\201\n LD SI,#\200\n ADD SI,AX",
+" LD SI,#\200+\201",
+
+/* " LD AX,#\201\n PUSH SI\n LD SI,#\200\n ADD SI,AX",
+" LD SI,#\200+\201\n PUSH SI", */
+
+" LD AX,#\201\n ADD SI,BP,#\200\n ADD SI,AX",
+" ADD SI,BP,#\200+\201",
+
+/* " LD AX,#\201\n PUSH SI\n ADD SI,BP,#\200\n ADD SI,AX",
+" ADD SI,#\200+\201\n PUSH SI", */
+
+" LD \200,#\201\n ADD \200,#\202",
+" LD \200,#\201+\202",
+
+" ADD \200,BP,#\201\n ADD \200,#\202",
+" ADD \200,BP,#\201+\202",
+
+" LD AX,[SI]\n LD SI,\200\n ADD SI,AX",
+" ADD SI,\200\n LD SI,[SI]",
+
+" LD AX,\200\n LD SI,\201\n ADD SI,AX",
+" ADD SI,\200\n LD SI,\201",
+
+" LD AX,[SI]\n ADD SI,BP,\200\n ADD SI,AX",
+" ADD SI,AX\n ADD SI,BP,\200\n ld AX,[SI]",
+
+" LD AX,\200\n ADD SI,BP,\201\n ADD SI,AX",
+" ADD SI,\200\n ADD SI,BP,\201",
+
+/* increment pointer optimization */
+" LD AX,\200\n INC AX\n ST AX,\200\n DEC AX\n LD SI,AX",
+" ST AX,\200\n INC AX\n ld SI,AX\n LD AX,\200",
+
+" LD AX,\200\n INC AX\n ST AX,\200\n DEC AX\n PUSH SI\n LD SI,AX",
+" ST AX,\200\n INC AX\n LD SI,AX\n PUSH SI\n LD AX,\200",
+
+" LD AX,\200\n ADD AX,\201\n ST AX,\200\n SUB AX,\201\n LD SI,AX",
+" ST AX,\200\n ADD AX,\201\n ld SI,AX\n LD AX,\200",
+
+" LD AX,\200\n ADD AX,\201\n ST AX,\200\n SUB AX,\201\n PUSH SI\n LD SI,AX",
+" ST AX,\200\n ADD AX,\201\n LD SI,AX\n PUSH SI\n LD AX,\200",
+
+/* decrement pointer optimization */
+" LD AX,\200\n DEC AX\n ST AX,\200\n INC AX\n LD SI,AX",
+" ST AX,\200\n DEC AX\n ld SI,AX\n LD AX,\200",
+
+" LD AX,\200\n DEC AX\n ST AX,\200\n INC AX\n PUSH SI\n LD SI,AX",
+" ST AX,\200\n DEC AX\n LD SI,AX\n PUSH SI\n LD AX,\200",
+
+" LD AX,\200\n SUB AX,\201\n ST AX,\200\n ADD AX,\201\n LD SI,AX",
+" ST AX,\200\n SUB AX,\201\n ld SI,AX\n LD AX,\200",
+
+" LD AX,\200\n SUB AX,\201\n ST AX,\200\n ADD AX,\201\n PUSH SI\n LD SI,AX",
+" ST AX,\200\n SUB AX,\201\n LD SI,AX\n PUSH SI\n LD AX,\200",
+
+/* Structure reference optimizations */
+" LD SI,#\200\n LD AX,#\201\n ADD SI,AX",
+" LD SI,#\200+\201",
+
+" ADD SI,BP,#\200\n LD AX,#\201\n ADD SI,AX",
+" ADD SI,BP,#\200+\201",
+
+" LD SI,#\200\n ADD SI,AX\n LD AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n LD SI,#\200+\201",
+
+" ADD SI,BP,#\200\n ADD SI,AX\n LD AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n ADD SI,BP,#\200+\201",
+
+" LD AX,#\200\n ADD SI,AX\n LD AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n LD AX,#\200+\201",
+
+" LD AX,\200\n ADD SI,AX",
+" ADD SI,\200",
+
+/* jump optimizations */
+" LJMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" LJMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" J\240 *+5\n LJMP \201\n SJMP \202",
+" LJMP \201\n J\200 \202",
+
+" J\240 *+5\n LJMP \201\n LJMP \202\n\201 EQU *",
+"\201 EQU *\n LJMP \202\n J\240 \201",
+
+/* compare optimizations */
+" LCALL ?\200\n J\241 *+5",
+"-\200\201 *+5\n CMP AX,CX",
+
+" LD CX,\202\n LCALL ?\200\n J\241 *+5",
+"-\200\201 *+5\n CMP AX,\202",
+
+" LDBSE AX,\203\n LDBSE CX,\202\n LCALL ?\200\n J\241 *+5",
+"-\200\201 *+5\n CMPB AX,\202\n LDB AX,\203",
+
+" LDBZE AX,\203\n LDBZE CX,\202\n LCALL ?\200\n J\241 *+5",
+"-\200\201 *+5\n CMPB AX,\202\n LDB AX,\203",
+
+"-eqNE \200",	" JE \200",
+"-eqE \200",	" JNE \200",
+"-neNE \200",	" JNE \200",
+"-neE \200",	" JE \200",
+"-ltNE \200",	" JLT \200",
+"-ltE \200",	" JGE \200",
+"-gtNE \200",	" JGT \200",
+"-gtE \200",	" JLE \200",
+"-leNE \200",	" JLE \200",
+"-leE \200",	" JGT \200",
+"-geNE \200",	" JGE \200",
+"-geE \200",	" JLT \200",
+"-ultNE \200",	" JNC \200",
+"-ultE \200",	" JC \200",
+"-ugtNE \200",	" JH \200",
+"-ugtE \200",	" JNH \200",
+"-uleNE \200",	" JNH \200",
+"-uleE \200",	" JH \200",
+"-ugeNE \200",	" JC \200",
+"-ugeE \200",	" JNC \200",
+
+/* Misc. simple optimizations */
+" LD AX,#0",					" CLR AX",
+" LDB AX,#0",					" CLRB AX",
+" LDB AX,\200\n EXTB AX",		" LDBSE AX,\200",
+" LDB AX,\200\n CLRB AX+1",		" LDBZE AX,\200",
+" ADD SP,\200\n LD SP,BP",		" LD SP,BP",
+" LCALL nargs",					"",
+" CMP AX,#0\n-eqNE \201",		" JE \201\n AND AX,AX",
+" CMP AX,#0\n-eqE \201",		" JNE \201\n AND AX,AX",
+
+0 };
+
+/* Table of complements */
+char *not_table[] = {
+	"E",	"NE",
+	"LT",	"GE",
+	"LE",	"GT",
+	"C",	"NC",
+	"H",	"NH",
+0 };

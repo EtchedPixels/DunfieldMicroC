@@ -1,0 +1,188 @@
+/*
+ * Peephole optimization table for: C-FLEA
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1989-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+#define	LIMIT1	32
+#define	LIMIT2	223
+
+char *peep_table[] = {
+
+/* Data movement and register usage optimizations */
+" ST \200\n LD \200",
+" ST \200",
+
+" STB \200\n LDB \200",
+" STB \200",
+
+" LDI \200\n TIA",
+" LD \200",
+
+/* Special case of duplicate passed variable optimization...
+   Insure dups from stack don't get optimized (since offset changes) */
+" LD \200,S\n PUSHA\n LD \200,S",
+" LD \200,S\n PUSHA ;\n LD \200,S",
+
+" LD \200\n PUSHA\n LD \200",
+" PUSHA\n LD \200",
+
+/* Constant offsets */
+" LD #\200\n LDI #\201\n ADAI",
+" LDI #\201+\200",
+
+" LDB #\200\n LDI #\201\n ADAI",
+" LDI #\201+\200",
+
+" LDB #\200\n LEAI \201,S\n ADAI",			/* ??? */
+" LEAI \201+\200,S",
+
+/* " LD #\200\n PUSHI\n LDI #\201\n ADAI",
+" LDI #\201+\200\n PUSHI", */
+
+/* " LDB #\200\n PUSHI\n LDI #\201\n ADAI",
+" LDI #\201+\200\n PUSHI", */
+
+/* " LDB #\200\n PUSHI\n LEAI \201,S\n ADAI",
+" LEAI \201+\200,S\n PUSHI", */
+
+" LD #\200\n ADD #\201\n TAI",
+" LDI #\200+\201",
+
+" LD #\200\n ADDB #\201\n TAI",
+" LDI #\200+\201",
+
+" LEAI \200,S\n TIA\n ADDB #\201\n TAI",	/* ??? */
+" LEAI \200+\201,S",
+
+" LDB #\200\n LDI \201\n ADAI",
+" LEAI \200,I\n LDI \201",
+
+" ADDB #\200\n LDI #\201\n ADAI",
+" ADAI\n LDI #\201+\200",
+
+" ADD #\200\n LDI #\201\n ADAI",
+" ADAI\n LDI #\201+\200",
+
+" ADDB #\200\n LEAI \201,S\n ADAI",			/* ??? */
+" ADAI\n LEAI \201+\200,S",
+
+/* Structure accessing */
+" LDI #\200\n LD #\201\n ADAI",
+" LDI #\200+\201",
+
+" LDI #\200\n PUSHA\n LD #\201\n ADAI",
+" PUSHA\n LDI #\200+\201",
+
+" LDI #\200\n ADAI\n LD #\201\n ADAI",
+" ADAI\n LDI #\200+\201",
+
+" LEAI \200,S\n LDB #\201\n ADAI",			/* ??? */
+" LEAI \200+\201,S",
+
+" LEAI \200,S\n PUSHA\n LDB #\201\n ADAI",	/* ??? */
+" PUSHA\n LEAI \200+\201,S",
+
+" LEAI \200,S\n ADAI\n LDB #\201\n ADAI",	/* ??? */
+" ADAI\n LEAI \200+\201,S",
+
+" LDB #\200\n ADAI",
+" LEAI \200,I",
+
+/* post inc/dec pointer optimization */
+" LD \200\n INC\n ST \200\n DEC\n TAI",
+" ST \200\n INC\n TAI ;\n LD \200",
+
+" LD \200\n INC\n INC\n ST \200\n DEC\n DEC\n TAI",
+" ST \200\n INC\n INC\n TAI ;\n LD \200",
+
+" LD \200\n DEC\n ST \200\n INC\n TAI",
+" ST \200\n DEC\n TAI ;\n LD \200",
+
+" LD \200\n DEC\n DEC\n ST \200\n INC\n INC\n TAI",
+" ST \200\n DEC\n DEC\n TAI ;\n LD \200",
+
+" LD \200,S\n INC\n ST \200,S\n DEC\n PUSHI\n TAI",
+" ST \200+2,S\n INC\n TAI\n PUSHI\n LD \200,S",
+
+" LD \200,S\n INC\n INC\n ST \200,S\n DEC\n DEC \nPUSHI\n TAI",
+" ST \200+2,S\n INC\n INC\n TAI\n PUSHI\n LD \200,S",
+
+" LD \200,S\n DEC\n ST \200,S\n INC\n PUSHI\n TAI",
+" ST \200+2,S\n DEC\n TAI\n PUSHI\n LD \200,S",
+
+" LD \200,S\n DEC\n DEC\n ST \200,S\n INC\n INC\n PUSHI\n TAI",
+" ST \200+2,S\n DEC\n DEC\n TAI\n PUSHI\n LD \200,S",
+
+" LD \200\n INC\n ST \200\n DEC\n PUSHI\n TAI",
+" ST \200\n INC\n TAI\n PUSHI\n LD \200",
+
+" LD \200\n INC\n INC\n ST \200\n DEC\n DEC \nPUSHI\n TAI",
+" ST \200\n INC\n INC\n TAI\n PUSHI\n LD \200",
+
+" LD \200\n DEC\n ST \200\n INC\n PUSHI\n TAI",
+" ST \200\n DEC\n TAI\n PUSHI\n LD \200",
+
+" LD \200\n DEC\n DEC\n ST \200\n INC\n INC\n PUSHI\n TAI",
+" ST \200\n DEC\n DEC\n TAI\n PUSHI\n LD \200",
+
+/* Conditional optimizations */
+" CMP \200\n NOT\n J\241 \202",
+" J\241 \202\n CMP \200",
+
+" CMPB \200\n NOT\n J\241 \202",
+" J\241 \202\n CMPB \200",
+
+/* jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" J\240 \201\n JMP \202\n\201 EQU *",
+"\201 EQU *\n J\240 \202",
+
+" J\240 \201\n\202 EQU *\n JMP \203\n \201 EQU *",
+"\201 EQU *\n\202 EQU \203\n J\240 \203",
+
+" J\200 \201\n SJMP \202",
+" JMP \201\n SJ\240 \202",
+
+/* Misc simple optimizations */
+" LDB #0",						" CLR",
+" \200 0,I",					" \200 I",
+" FREE \220\n FREE \231",		" FREE \200+\201",
+" FREE 2\n RET",				" RET\n LDI S+",
+" CALL \200\n RET",				" JMP \200",
+" PUSHA\n CALL outp1\n FREE 2",	" OUT 1",
+" PUSHA\n CALL outp2\n FREE 2",	" OUT 2",
+" PUSHA\n CALL outp3\n FREE 2",	" OUT 3",
+" PUSHA\n CALL outp4\n FREE 2",	" OUT 4",
+" TIA\n PUSHA",					" PUSHI",		/* New */
+" CALL nargs", 					"",
+" CALL inp1",					" IN 1",
+" CALL inp2",					" IN 2",
+" CALL inp3",					" IN 3",
+" CALL inp4",					" IN 4",
+"$EX:outp1",					"",
+"$EX:outp2",					"",
+"$EX:outp3",					"",
+"$EX:outp4",					"",
+"$EX:inp1",						"",
+"$EX:inp2",						"",
+"$EX:inp3",						"",
+"$EX:inp4",						"",
+"$EX:nargs",					"",
+0 };
+
+/* Table of complements */
+char *not_table[] = {
+	"Z", "NZ",
+0 };

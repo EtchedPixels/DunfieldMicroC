@@ -1,0 +1,211 @@
+/*
+ * Peephole optimization table for 8086:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1989-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* data movement & register usage optimizations */
+" MOV \200,\201\n MOV \201,\200",
+" MOV \200,\201",
+
+" MOV \200,\201\n MOV \202,\200\n MOV \201,\200",
+" MOV \202,\200\n MOV \200,\201",
+
+" MOV AX,\200\n MOV CX,AX",
+" MOV CX,\200",
+
+" MOV SI,\200\n MOV AX,SI",
+" MOV AX,\200",
+
+" LEA SI,\200\n MOV AX,SI",
+" LEA AX,\200",
+
+" MOV AX,\200\n MOV SI,AX",
+" MOV SI,\200",
+
+" LEA AX,\200\n MOV SI,AX",
+" LEA SI,\200",
+
+" PUSH AX\n LEA SI,\200\n MOV AX,SI\n POP BX\n ADD AX,BX",
+" ADD AX,SI\n LEA SI,\200",
+
+" MOV AX,\200\n PUSH AX\n MOV AX,\200",
+" PUSH AX\n MOV AX,\200",
+
+" POP BX\n MOV AX,BX",
+" POP AX",
+
+/* Indexing and constant offsets */
+" MOV AX,#\201\n MOV SI,#\200\n ADD SI,AX",
+" MOV SI,#\200+\201",
+
+/* " MOV AX,#\201\n PUSH SI\n MOV SI,#\200\n ADD SI,AX",
+" MOV SI,#\200+\201\n PUSH SI", */
+
+" MOV AX,#\200\n LEA SI,\201\n ADD SI,AX",
+" LEA SI,\200+\201",
+
+/* " MOV AX,#\200\n PUSH SI\n LEA SI,\201\n ADD SI,AX",
+" LEA SI,\200+\201\n PUSH SI", */
+
+" MOV \200,#\201\n ADD \200,#\202",
+" MOV \200,#\201+\202",
+
+" LEA \200,\201\n ADD \200,#\202",
+" LEA \200,\202+\201",
+
+" MOV AX,[SI]\n MOV SI,\200\n ADD SI,AX",
+" ADD SI,\200\n MOV SI,[SI]",
+
+" MOV AX,\200\n MOV SI,\201\n ADD SI,AX",
+" ADD SI,\200\n MOV SI,\201",
+
+" MOV AX,[SI]\n LEA SI,\200\n ADD SI,AX",
+" ADD SI,AX\n LEA SI,\200\n mov AX,[SI]",
+
+" MOV AX,\200\n LEA SI,\201\n ADD SI,AX",
+" ADD SI,\200\n LEA SI,\201",
+
+/* increment pointer optimization */
+" MOV AX,\200\n INC AX\n MOV \200,AX\n DEC AX\n MOV SI,AX",
+" INC >\200\n MOV SI,\200",
+
+" MOV AX,\200\n INC AX\n MOV \200,AX\n DEC AX\n PUSH SI\n MOV SI,AX",
+" INC >\200\n MOV SI,\200\n PUSH SI",
+
+" MOV AX,\200\n INC AX\n MOV \200,AX\n MOV SI,AX",
+" MOV SI,\200\n INC >\200",
+
+" MOV AX,\200\n INC AX\n MOV \200,AX\n PUSH SI\n MOV SI,AX",
+" MOV SI,\200\n PUSH SI\n >\200",
+
+" MOV AX,\200\n ADD AX,\201\n MOV \200,AX\n SUB AX,\201\n MOV SI,AX",
+" MOV \200,AX\n ADD AX,\201\n MOV SI,AX ;\n MOV AX,\200",
+
+" MOV AX,\200\n ADD AX,\201\n MOV \200,AX\n SUB AX,\201\n PUSH SI\n MOV SI,AX",
+" MOV \200,AX\n ADD AX,\201\n MOV SI,AX\n PUSH SI\n MOV AX,\200",
+
+/* decrement pointer optimization */
+" MOV AX,\200\n DEC AX\n MOV \200,AX\n INC AX\n MOV SI,AX",
+" DEC >\200\n MOV SI,\200",
+
+" MOV AX,\200\n DEC AX\n MOV \200,AX\n INC AX\n PUSH SI\n MOV SI,AX",
+" DEC >\200\n MOV SI,\200\n PUSH SI",
+
+" MOV AX,\200\n DEC AX\n MOV \200,AX\n MOV SI,AX",
+" MOV SI,\200\n DEC >\200",
+
+" MOV AX,\200\n DEC AX\n MOV \200,AX\n PUSH SI\n MOV SI,AX",
+" MOV SI,\200\n PUSH SI\n DEC >\200",
+
+" MOV AX,\200\n SUB AX,\201\n MOV \200,AX\n ADD AX,\201\n MOV SI,AX",
+" MOV \200,AX\n SUB AX,\201\n MOV SI,AX ;\n MOV AX,\200",
+
+" MOV AX,\200\n SUB AX,\201\n MOV \200,AX\n ADD AX,\201\n PUSH SI\n MOV SI,AX",
+" MOV \200,AX\n SUB AX,\201\n MOV SI,AX\n PUSH SI\n MOV AX,\200",
+
+/* Structure reference optimizations */
+" MOV SI,#\200\n MOV AX,#\201\n ADD SI,AX",
+" MOV SI,#\200+\201",
+
+" LEA SI,\200\n MOV AX,#\201\n ADD SI,AX",
+" LEA SI,\200+\201",
+
+" MOV SI,#\200\n ADD SI,AX\n MOV AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n MOV SI,#\200+\201",
+
+" LEA SI,\200\n ADD SI,AX\n MOV AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n LEA SI,\200+\201",
+
+" MOV AX,#\200\n ADD SI,AX\n MOV AX,#\201\n ADD SI,AX",
+" ADD SI,AX\n MOV AX,#\200+\201",
+
+" MOV AX,\200\n ADD SI,AX",
+" ADD SI,\200",
+
+/* jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" J\240 \201\n JMP \202\n\201 EQU *\n JMP \203\n\202 EQU *",
+"\202 EQU *\n JMP \203\n J\240 \202",
+
+" J\200 \201\n JMP \202\n\201 EQU *\n JMP <\203",
+" JMP \202\n J\200 \203",
+
+/* compare optimizations */
+" CALL ?\200\n J\201 ??\202",
+"-\200\201 ??\202\n CMP CX,AX",
+
+" MOV AX,\203\n CALL ?\200\n J\201 ??\202",
+"-\200\201 ??\202\n CMP CX,\203",
+
+" MOV CX,AX\n MOV AL,\217\n CBW\n CALL ?\200\n J\201 ??\202",
+"-\200\201 ??\202\n CMP AL,\217",
+
+" CBW\n MOV CX,AX\n MOV AL,\203\n CBW\n CALL ?\200\n J\201 ??\202",
+"-\200\201 ??\202\n CMP AL,\203",
+
+" MOV CX,\200\n CALL ?eq\n J\201 ??\202",
+"-eq\201 ??\202\n CMP AX,\200",
+
+" MOV CX,\200\n CALL ?ne\n J\201 ??\202",
+"-ne\201 ??\202\n CMP AX,\200",
+
+"-eqNZ \200",	" JZ \200",
+"-eqZ \200",	" JNZ \200",
+"-neNZ \200",	" JNZ \200",
+"-neZ \200",	" JZ \200",
+"-ltNZ \200",	" JL \200",
+"-ltZ \200",	" JGE \200",
+"-gtNZ \200",	" JG \200",
+"-gtZ \200",	" JLE \200",
+"-leNZ \200",	" JLE \200",
+"-leZ \200",	" JG \200",
+"-geNZ \200",	" JGE \200",
+"-geZ \200",	" JL \200",
+"-ultNZ \200",	" JB \200",
+"-ultZ \200",	" JAE \200",
+"-ugtNZ \200",	" JA \200",
+"-ugtZ \200",	" JBE \200",
+"-uleNZ \200",	" JBE \200",
+"-uleZ \200",	" JA \200",
+"-ugeNZ \200",	" JAE \200",
+"-ugeZ \200",	" JB \200",
+
+/* Misc. simple optimizations */
+" MOV AX,#0",					" XOR AX,AX",
+" MOV AL,#0",					" XOR AL,AL",
+" MOV AL,#\200\n CBW",			" MOV AX,#\200",
+" MOV AL,#\200\n XOR AH,AH",	" MOV AX,#\200",
+" MOV CL,1\n SHL \200,CL",		" SHL \200,1",
+" MOV CL,1\n SHR \200,CL",		" SHR \200,1",
+" ADD SP,\200\n MOV SP,BP",		" MOV SP,BP",
+" ADD SP,#2",					" INC SP\n INC SP",
+" SUB SP,#1",					" DEC SP",
+" SUB SP,#2",					" DEC SP\n DEC SP",
+" CALL _nargs",					"",
+" CMP \200,#0\n-eqNZ \201",		" JZ \201\n AND \200,\200",
+" CMP \200,#0\n-eqZ \201",		" JNZ \201\n AND \200,\200",
+
+0 };
+
+/* Table of complements */
+char *not_table[] = {
+	"Z",	"NZ",
+	"L",	"GE",
+	"G",	"LE",
+	"B",	"AE",
+	"A",	"BE",
+0 };

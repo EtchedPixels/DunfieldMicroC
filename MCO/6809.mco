@@ -1,0 +1,180 @@
+/*
+ * Peephole optimization table for 6809:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1989-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* Data movement and register usage optimizations */
+" STD \200\n LDD \200",
+" STD \200",
+
+" STB \200\n LDB \200",
+" STB \200",
+
+" LDD \200\n TFR D,X",
+" LDX \200",
+
+" LDU \200\n TFR U,D",
+" LDD \200",
+
+/* Special case of duplicate passed variable optimization...
+   Insure dups from stack don't get optimized (since offset changes) */
+" LDD \200,S\n PSHS A,B\n LDD \200,S",
+" LDD \200,S\n PSHS B,A\n LDD \200,S",
+
+" LDD \200\n PSHS A,B\n LDD \200",
+" PSHS A,B\n LDD \200",
+
+/* Constant offsets */
+" LDD #\200\n LDU #\201\n LEAU D,U",
+" LDU #\201+\200",
+
+" LDD #\200\n LEAU \201,S\n LEAU D,U",
+" LEAU \201+\200,S",
+
+/* " LDD #\200\n PSHS U\n LDU #\201\n LEAU D,U",
+" LDU #\201+\200\n PSHS U",
+
+" LDD #\200\n PSHS U\n LEAU \201,S\n LEAU D,U",
+" LEAU \201+\200,S\n PSHS U", */
+
+" LDD #\200\n ADDD #\201\n TFR D,U",
+" LDU #\200+\201",
+
+" LEAU \200,S\n TFR U,D\n ADDD #\201\n TFR D,U",
+" LEAU \200+\201,S",
+
+" LDD #\200\n LDU \201\n LEAU D,U",
+" LEAU \200,U\n LDU \201",
+
+/* Structure accessing */
+" LDU #\200\n LDD #\201\n LEAU D,U",
+" LDU #\200+\201",
+
+" LDU #\200\n PSHS A,B\n LDD #\201\n LEAU D,U",
+" PSHS A,B\n LDU #\200+\201",
+
+" LDU #\200\n LEAU D,U\n LDD #\201\n LEAU D,U",
+" LEAU D,U\n LDU #\200+\201",
+
+" LEAU \200,S\n LDD #\201\n LEAU D,U",
+" LEAU \200+\201,S",
+
+" LEAU \200,S\n PSHS A,B\n LDD #\201\n LEAU D,U",
+" PSHS A,B\n LEAU \200+\201,S",
+
+" LEAU \200,S\n LEAU D,U\n LDD #\201\n LEAU D,U",
+" LEAU D,U\n LEAU \200+\201,S",
+
+" LDD #\200\n LEAU D,U",
+" LEAU \200,U",
+
+/* post inc/dec pointer optimization */
+" LDD \200\n ADDD \201\n STD \200\n SUBD \201\n TFR D,U",
+" STD \200\n ADDD \201\n TFR D,U ;\n LDD \200",
+
+" LDD \200\n SUBD \201\n STD \200\n ADDD \201\n TFR D,U",
+" STD \200\n SUBD \201\n TFR D,U ;\n LDD \200",
+
+" LDD \200,S\n ADDD \201\n STD \200,S\n SUBD \201\n PSHS U\n TFR D,U",
+" STD \200+2,S\n ADDD \201\n TFR D,U\n PSHS U\n LDD \200,S",
+
+" LDD \200,S\n SUBD \201\n STD \200,S\n ADDD \201\n PSHS U\n TFR D,U",
+" STD \200,S\n SUBD \201\n TFR D,U\n PSHS U\n LDD \200,S",
+
+" LDD \200\n ADDD \201\n STD \200\n SUBD \201\n PSHS U\n TFR D,U",
+" STD \200\n ADDD \201\n TFR D,U\n PSHS U\n LDD \200",
+
+" LDD \200\n SUBD \201\n STD \200\n ADDD \201\n PSHS U\n TFR D,U",
+" STD \200\n SUBD \201\n TFR D,U\n PSHS U\n LDD \200",
+
+/* Conditional optimizations */
+" SEX\n TFR D,X\n LDB \200\n SEX\n JSR ?\201\n LB\202 \203",
+"-\201\202 \203\n CMPB \200",
+
+" CLRA\n TFR D,X\n LDB \200\n CLRA\n JSR ?\201\n LB\202 \203",
+"-\201\202 \203\n CMPB \200",
+
+" TFR D,X\n LDD \200\n JSR ?\201\n LB\202 \203",
+"-\201\202 \203\n CMPD \200",
+
+" LDX \200\n LDD \201\n JSR ?\202\n LB\203 \204",
+"-\202\203 \204\n CMPD \201\n LDD \200",
+
+" LDX \200\n JSR ?eq\n LB\201 \202",
+"-eq\201 \202\n CMPD \200",
+
+" LDX \200\n JSR ?ne\n LB\201 \202",
+"-ne\201 \202\n CMPD \200",
+
+"-eqNE \200",	" LBEQ \200",
+"-eqEQ \200",	" LBNE \200",
+"-neNE \200",	" LBNE \200",
+"-neEQ \200",	" LBEQ \200",
+"-ltNE \200",	" LBLT \200",
+"-ltEQ \200",	" LBGE \200",
+"-gtNE \200",	" LBGT \200",
+"-gtEQ \200",	" LBLE \200",
+"-leNE \200",	" LBLE \200",
+"-leEQ \200",	" LBGT \200",
+"-geNE \200",	" LBGE \200",
+"-geEQ \200",	" LBLT \200",
+"-ultNE \200",	" LBLO \200",
+"-ultEQ \200",	" LBHS \200",
+"-ugtNE \200",	" LBHI \200",
+"-ugtEQ \200",	" LBLS \200",
+"-uleNE \200",	" LBLS \200",
+"-uleEQ \200",	" LBHI \200",
+"-ugeNE \200",	" LBHS \200",
+"-ugeEQ \200",	" LBLO \200",
+
+/* jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" LB\240 \201\n JMP \202\n\201 EQU *",
+"\201 EQU *\n LB\240 \202",
+
+" LB\240 \201\n\202 EQU *\n JMP \203\n \201 EQU *",
+"\201 EQU *\n\202 EQU \203\n LB\240 \203",
+
+" LB\200 \201\n BRA \202",
+" JMP \201\n B\240 \202",
+
+/* Misc simple optimizations */
+" LDD #0",						" CLRB\n CLRA",
+" LDB #0",						" CLRB",
+" LDB #\200\n SEX",				" LDD #\200",
+" LDB #\200\n CLRA",			" LDD #(\200)&255",
+" FCB 0,\200",					" FCB 00,\200",
+" FDB 0,\200",					" FDB 00,\200",
+" \200 0,\201",					" \200 ,\201",
+" LEAS \200,S\n LEAS \201,S",	" LEAS \200+\201,S",
+" LEAS 2,S\n RTS",				" PULS X,PC",
+" LEAS 4,S\n RTS",				" PULS X,Y,PC",
+" LEAS 6,S\n RTS",				" PULS X,Y,U,PC",
+" JSR \200\n RTS",				" JMP \200",
+" JSR nargs", 					"",
+" SEX\n LEAU D,U",				" LEAU B,U",
+" CMPB #0",						" TSTB",
+0 };
+
+/* Table of complements */
+char *not_table[] = {
+	"EQ",	"NE",
+	"LT",	"GE",
+	"LE",	"GT",
+	"LO",	"HS",
+	"LS",	"HI",
+0 };

@@ -1,0 +1,142 @@
+/*
+ * Peephole optimization table for 6816:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1992-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* data movement & register usage optimizations */
+" STD \200\n LDD \200",
+" STD \200",
+
+" STAB \200\n LDAB \200",
+" STAB \200",
+
+" LDD \200\n XGDX",
+" LDX \200",
+
+" LDX \200\n XGDX",
+" LDD \200",
+
+" XGDX\n XGDX",
+"",
+
+" LDD \200\n PSHM D\n LDD \200",
+" PSHM D\n LDD \200",
+
+" LDD \200\n TDE\n LDD \201",
+" LDD \201\n LDE \200",
+
+/* Constant offsets */
+" LDD #\200\n LDX #\201\n ADX",
+" LDX #\201+\200",
+
+" LDD #\200\n ADDD #\201\n XGDX",
+" LDX #\200+\201",
+
+" LDD #\200\n TZX\n AIX #\201\n ADX",
+" AIX #\200+\201\n TZX",
+
+" ADDD #\200\n XGDX\n XGDX\n ADDD #\201",
+" ADDD #\200+\201",
+
+/* Structure access */
+" LDX #\200\n LDD #\201\n ADX",
+" LDX #\200+\201",
+
+" LDX #\200\n ADX\n LDD #\201\n ADX",
+" ADX\n LDX #\200+\201",
+
+" LDX \200,Z\n LDD #\201\n ADX",
+" AIX #\201\n LDX \200,Z",
+
+" AIX #\200\n LDD #\201\n ADX",
+" AIX #\200+\201",
+
+" LDD #\200\n ADX",
+" AIX #\200",
+
+/* Conditional optimizations */
+" TDE\n LDD \200\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CPD \200",
+
+" LDE \200\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CPD \200",
+
+" LDE \200\n LDD \201\n JSR ?\202\n LB\243 \204",
+"-\202\203 \204\n CPD \201\n LDD \200",
+
+" SXT\n TDE\n LDAB \200\n SXT\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CMPB \200",
+
+" CLRA\n TDE\n LDAB \200\n CLRA\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CMPB \200",
+
+" SXT\n TDE\n LDD \200\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CPD \200\n SXT",
+
+" CLRA\n TDE\n LDD \200\n JSR ?\201\n LB\242 \203",
+"-\201\202 \203\n CPD \200\n CLRA",
+
+"-eqNE \200",	" LBEQ \200",
+"-eqEQ \200",	" LBNE \200",
+"-neNE \200",	" LBNE \200",
+"-neEQ \200",	" LBEQ \200",
+"-ltNE \200",	" LBLT \200",
+"-ltEQ \200",	" LBGE \200",
+"-gtNE \200",	" LBGT \200",
+"-gtEQ \200",	" LBLE \200",
+"-leNE \200",	" LBLE \200",
+"-leEQ \200",	" LBGT \200",
+"-geNE \200",	" LBGE \200",
+"-geEQ \200",	" LBLT \200",
+"-ultNE \200",	" LBLO \200",
+"-ultEQ \200",	" LBHS \200",
+"-ugtNE \200",	" LBHI \200",
+"-ugtEQ \200",	" LBLS \200",
+"-uleNE \200",	" LBLS \200",
+"-uleEQ \200",	" LBHI \200",
+"-ugeNE \200",	" LBHS \200",
+"-ugeEQ \200",	" LBLO \200",
+
+/* jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" B\240 \203\n JMP \201\n\203 EQU *\n JMP \202\n\201 EQU *",
+"\201 EQU *\n JMP \202\n\203 EQU *\n B\240 \201",
+
+" B\240 \203\n JMP \201\n\203 EQU *\n BRA \202",
+" JMP \201\n B\200 \202",
+
+/* Misc simple optimizations */
+" LDD #0",						" CLRD",
+" LDAB #0",						" CLRB",
+" LDAB #\200\n SXT",			" LDD #\200",
+" LDAB #\200\n CLRA",			" LDD #(\200)&$FF",
+" JSR \200\n RTS",				" JMP \200",
+" JSR nargs",					"",
+" XGDX\n ADDD #0\n XGDX",		"",
+" CPD #0\n-eqNE \200",			" LBEQ \200\n TSTD",
+" CPD #0\n-eqEQ \200",			" LBNE \200\n TSTD",
+" CMPB #0\n-eqNE \200",			" LBEQ \200\n TSTB",
+" CMPB #0\n-eqEQ \200",			" LBNE \200\n TSTB",
+0 };
+
+/*
+ * Table of interchangable names
+ */
+char *not_table[] = {
+	"EQ",	"NE",
+	"LT",	"GE",
+	"LE",	"GT",
+	"LO",	"HS",
+	"LS",	"HI",
+0 };

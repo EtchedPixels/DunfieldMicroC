@@ -1,0 +1,229 @@
+/*
+ * Peephole optimization table for 8080/8085/Z80:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1991-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+#define	LIMIT1	255
+#define	LIMIT2	255
+
+char *peep_table[] = {
+
+/* Commutative operations */
+" MOV B,H\n MOV C,L\n LXI H,\200\n DAD B",
+" DAD B\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?mul",
+" CALL ?mul\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?and",
+" CALL ?and\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?or",
+" CALL ?or\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?xor",
+" CALL ?xor\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?sub",
+" DAD B\n LXI B,-\200",
+
+/* Data movement optimizations */
+" MOV H,\200\n MOV L,\201\n MOV B,H\n MOV C,L",
+" MOV C,\201\n MOV B,\200",
+
+" LXI H,\200\n MOV B,H\n MOV C,L",
+" LXI B,\200",
+
+" LXI D,\200\n MOV H,D\n MOV L,E",
+" LXI H,\200",
+
+" SHLD \200\n LHLD\200",
+" SHLD \200",
+
+" MOV A,L\n STA \200\n LDA \200\n MOV L,A",
+" STA \200\n MOV A,L",
+
+" LXI B,\200\n CALL ?pstkw\n LXI H,\200\n CALL ?gstkw",
+" CALL ?pstkw\n LXI B,\200",
+
+" LXI B,\200\n CALL ?pstkw\n LXI H,\200\n CALL ?gstkb",
+" CALL ?pstkb\n LXI B,\200",
+
+" XCHG\n LHLD \200\n XCHG\n CALL ?gind_d",
+" CALL ?gind_d\n XCHG\n LHLD \200",
+
+" XCHG\n LHLD \200\n XCHG\n LDAX D",
+" LDAX D\n XCHG\n LHLD \200",
+
+" XCHG\n LXI H,\200\n CALL ?gstkw\n XCHG\n CALL ?gind_d",
+" CALL ?gind_d\n XCHG\n CALL ?gstkw\n LXI H,\200",
+
+" XCHG\n LXI H,\200\n CALL ?gstkw\n XCHG\n LDAX D",
+" LDAX D\n XCHG\n CALL ?gstkw\n LXI H,\200",
+
+" XCHG\n LDAX D\n MOV L,A\n MVI H,\200",
+" MVI H,\200\n MOV L,M",
+
+" XCHG\n LDAX D\n MOV L,A\n CALL ?sign",
+" CALL ?sign\n MOV L,M",
+
+" LXI H,\217\n LXI D,\200\n DAD D\n XCHG",
+" LXI D,\200+\217",
+
+" LXI H,\200\n XCHG\n LHLD \201\n XCHG",
+" LXI H,\200\n XCHG\n LHLD \201",
+
+" LXI H,\200\n XCHG\n LXI H,\201",
+" LXI H,\201\n LXI D,\200",
+
+" LXI H,\200\n PUSH D\n XCHG",
+" LXI D,\200\n PUSH D",
+
+" XCHG\n LXI H,\200\n PUSH D\n XCHG",
+" LXI D,\200\n PUSH H",
+
+" LHLD \200\n XCHG\n LHLD \201\n XCHG",
+" LHLD \200\n XCHG\n LHLD \201",
+
+" LXI H,\200\n CALL ?gstkw\n XCHG\n LXI H,\201\n CALL ?gstkw\n XCHG",
+" CALL ?gstkw\n LXI H,\200\n XCHG\n CALL ?gstkw\n LXI H,\201",
+
+" LXI H,\200\n CALL ?gstkw\n XCHG\n LHLD \201\n XCHG",
+" CALL ?gstkw\n LXI H,\200\n XCHG\n LHLD \201",
+
+" LHLD \200\n XCHG\n LXI H,\201\n CALL ?gstkw\n XCHG",
+" LHLD \200\n XCHG\n CALL ?gstkw\n LXI H,\201",
+
+" LXI D,\200\n XCHG\n DAD SP\n XCHG\n MOV H,D\n MOV L,E",
+" DAD SP\n LXI H,\200",
+
+" LXI D,\200\n XCHG\n DAD SP\n XCHG\n DAD D",
+" DAD D\n LXI D,\200\n DAD SP",
+
+" LXI B,2\n CALL ?pstkw",
+" PUSH H\n POP B",
+
+" LXI B,2\n CALL ?pstkb",
+" PUSH B\n MOV C,L\n POP B",
+
+" LXI B,3\n CALL ?pstkb",
+" PUSH B\n MOV B,L\n POP B",
+
+" LXI H,\200\n MOV A,L\n STAX \201\n LXI H,\202",
+" LXI H,\202\n STAX \201\n MVI A,\200",
+
+" LXI H,\200\n MOV A,L\n STAX \201\n LHLD \202",
+" LHLD \202\n STAX \201\n MVI A,\200",
+
+" XCHG\n DAD D\n XCHG\n LXI H,\200",
+" LXI H,\200\n XCHG\n DAD D",
+
+" XCHG\n DAD D\n XCHG\n LHLD \200",
+" LHLD \200\n XCHG\n DAD D",
+
+" XCHG\n LXI H,\200\n MOV A,L\n STAX D\n LXI H,\202",
+" LXI H,\202\n MVI M,\200",
+
+" XCHG\n LXI H,\200\n MOV A,L\n STAX D\n LHLD \202",
+" LHLD \202\n MVI M,\200",
+
+#if 7	/* Immediate form stack access */
+" LXI H,\220\n CALL ?gstkb",
+" DB \200\n CALL ?gstkbi",
+
+" LXI H,\220\n CALL ?gstkw",
+" DB \200\n CALL ?gstkwi",
+
+" LXI B,\220\n CALL ?pstkb",
+" DB \200\n CALL ?pstkbi",
+
+" LXI B,\220\n CALL ?pstkw",
+" DB \200\n CALL ?pstkwi",
+#endif
+
+#if 0	/* Direct getstkb optimization */
+" LXI H,\200\n CALL ?gstkb",
+" MOV L,M\n DAD SP\n LXI H,\200-2",
+#endif
+
+/* Structure access */
+" LXI D,\200\n LXI H,\201\n DAD D",
+" LXI H,\200+\201",
+
+" LXI D,\200\n DAD D\n XCHG\n LXI H,\201\n DAD D",
+" DAD D\n LXI D,\200+\201",
+
+" LXI H,\200\n XCHG",
+" LXI D,\200",
+
+" XCHG\n LXI H,\201\n DAD D",
+" DAD D\n LXI D,\201",
+
+/* Jump optimizations */
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200:\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" J\200 \201\n JMP \202\n\201 EQU *\n JMP \203\n\202 EQU *",
+"\202 EQU *\n\201 EQU \203\n J\200 \203",
+
+" CALL \200\n RET",
+" JMP \200",
+
+/* Compare optimizations */
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?eq",
+" CALL ?eq\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?ne",
+" CALL ?ne\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?lt",
+" CALL ?gt\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?gt",
+" CALL ?lt\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?le",
+" CALL ?ge\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?ge",
+" CALL ?le\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?ult",
+" CALL ?ugt\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?ugt",
+" CALL ?ult\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?ule",
+" CALL ?uge\n LXI B,\200",
+
+" MOV B,H\n MOV C,L\n LXI H,\200\n CALL ?uge",
+" CALL ?ule\n LXI B,\200",
+
+" LXI B,2\n CALL ?mul",
+" DAD H",
+
+/* Misc optimizations */
+" LXI \200,0\n DAD \200",				"*",
+" LXI \200,1\n DAD \200",				" INX H",
+" LXI \200,-1\n DAD \200",				" DCX H",
+" LXI H,\200\n PUSH H\n LXI H,\200",	" PUSH H\n LXI H,\200",
+" LHLD \200\n PUSH H\n LHLD \200",		" PUSH H\n LHLD \200",
+" XCHG\n XCHG",							"*",
+" PUSH \200\n POP \200",				"*",
+" CALL nargs",							"",
+
+0 };
+
+/* No complements in this one */
+char *not_table[] = { 0 };

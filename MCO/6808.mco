@@ -1,0 +1,175 @@
+/*
+ * Peephole optimization table for 6808:
+ *
+ * Each two entries represent the instruction sequences
+ * to "take" and "give" for a particular optimization.
+ *
+ * ?COPY.TXT 1989-2005 Dave Dunfield
+ * **See COPY.TXT**.
+ */
+char *peep_table[] = {
+
+/* Data movement & register usage optimizations */
+" STX \200\n LDX \200",
+" STX \200",
+
+" STHX \200\n LDHX \200",
+" STHX \200",
+
+" STX \200\n STA \201\n LDA \201\n LDX \200\n PSHA\n PULH",
+" STA \201\n STX \200",
+
+" LDA \200\n JSR ?pstkw\n LDA \200\n JSR ?gstkw",
+" JSR ?pstkw\n LDA \200",
+
+" MOV #\200/256,?idx\n MOV #\200&255,?idx+1\n LDHX ?idx",
+" STHX ?idx\n LDHX #\200",
+
+" LDA #\200\n JSR ?istka\n LDHX ?idx",
+" AIX #\200-2\n TSX",
+
+" AIX #\200-\200", "* 0 offset",
+
+" LDHX #\200\n MOV #\201/256,?idx\n MOV #\201&255,?idx+1\n JSR ?iadd",
+" MOV #(\201+\200)&255,?idx+1\n MOV #(\201+\200)/256,?idx",
+
+" LDHX #\200\n LDA #\201\n JSR ?istkw\n JSR ?iadd",
+" JSR ?istka\n LDA #\200+\201",
+
+" LDHX #\200\n LDA #\201\n JSR ?istka\n JSR ?iadd",
+" STHX ?idx\n AIX #(\200+\201)-2\n TSX",
+
+/* Structure references */
+" MOV #\200/256,?idx\n MOV #\200&255,?idx+1\n LDHX #\201\n JSR ?iadd",
+" MOV #(\200+\201)&255,?idx+1\n MOV #(\200+\201)/256,?idx",
+
+" MOV #\200/256,?idx\n MOV #\200&255,?idx+1\n PSHX\n PSHH\n LDHX #\201\n JSR ?iadd",
+" PSHH\n PSHX\n MOV #(\200+\201)&255,?idx+1\n MOV #(\200+\201)/256,?idx",
+
+" LDA #\200\n JSR ?istka\n LDHX #\201\n JSR ?iadd",
+" JSR ?istka\n LDA #\200+\201",
+
+" LDA #\200\n JSR ?istka\n PSHX\n PSHH\n LDHX #\201\n JSR ?iadd",
+" PSHH\n PSHX\n JSR ?istka\n LDA #\200+\201",
+
+/* Post inc/dec optimizations */
+" LDHX \200\n AIX #\201\n STHX \200\n AIX #-\201\n STHX ?idx",
+" STAX \200\n AIX #\201\n STHX ?idx\n LDHX \200",
+
+" LDHX \200\n AIX #-\201\n STHX \200\n AIX #\201\n STHX ?idx",
+" STAX \200\n AIX #-\201\n STHX ?idx\n LDHX \200",
+
+" LDA \200\n LDX \201\n PSHA\n PULH\n AIX #-\202\n PSHH\n PULA\n STX \201\n STA \200\n AIX #\202\n STHX ?idx",
+" STX \201\n STA \200\n PULA\n PSHH\n AIX #-\202\n STHX ?idx\n PULH\n PSHA\n LDX \201\n LDA \202",
+
+" LDA #\200\n JSR ?gstkw\n AIX #-\201\n LDA #\200\n JSR ?pstkw\n AIX #\201\n STHX ?idx",
+" JSR ?pstkw\n LDA #\200\n AIX #-\201\n STHX ?idx\n JSR ?gstkw\n LDA #\200",
+
+" STHX ?idx\n JSR ?idxidx",
+" MOV X+,?idx\n MOV X+,?idx+1",
+
+/* Conditional optimizations */
+" STHX ?acc\n LDHX \200\n JSR ?\201\n B\242 *+5",
+"+\202\201\n CPHX \200",
+
+"+NEeq",	" BEQ *+5",
+"+NEne",	" BNE *+5",
+"+NElt",	" BLT *+5",
+"+NEle",	" BLE *+5",
+"+NEgt",	" BGT *+5",
+"+NEge",	" BGE *+5",
+"+NEult",	" BLO *+5",
+"+NEule",	" BLS *+5",
+"+NEugt",	" BHI *+5",
+"+NEuge",	" BHS *+5",
+"+EQeq",	" BNE *+5",
+"+EQne",	" BEQ *+5",
+"+EQlt",	" BGE *+5",
+"+EQle",	" BGT *+5",
+"+EQgt",	" BLE *+5",
+"+EQge",	" BLT *+5",
+"+EQult",	" BHS *+5",
+"+EQule",	" BHI *+5",
+"+EQugt",	" BLS *+5",
+"+EQuge",	" BLO *+5",
+
+" JSR ?\200\n B\241 *+5",
+"-\241\200\n CPHX ?acc",
+
+"-NEeq",	" BNE *+5",
+"-NEne",	" BEQ *+5",
+"-NElt",	" BLE *+5",
+"-NEle",	" BLT *+5",
+"-NEgt",	" BGE *+5",
+"-NEge",	" BGT *+5",
+"-NEult",	" BLS *+5",
+"-NEule",	" BLT *+5",
+"-NEugt",	" BHS *+5",
+"-NEuge",	" BHI *+5",
+"-EQeq",	" BEQ *+5",
+"-EQne",	" BNE *+5",
+"-EQlt",	" BGT *+5",
+"-EQle",	" BGE *+5",
+"-EQgt",	" BLT *+5",
+"-EQge",	" BLE *+5",
+"-EQult",	" BHI *+5",
+"-EQule",	" BHS *+5",
+"-EQugt",	" BLO *+5",
+"-EQuge",	" BLS *+5",
+
+/* Jump optimizations */
+" B\240 *+5\n JMP \201\n BRA \202",
+" JMP \201\n B\200 \202",
+
+" JMP \200\n\200 EQU *",
+"\200 EQU *",
+
+" JMP \200\n\201 EQU *\n\200 EQU *",
+"\200 EQU *\n\201 EQU *",
+
+" JMP \200\n JMP \201",
+" JMP \200",
+
+" B\240 *+5\n JMP \201\n JMP \202\n\201 EQU *",
+"\201 EQU *\n Jmp \202\n B\240 *+5",
+
+" B\240 *+5\n JMP \201\n JMP \202",
+" Jmp \202\n Jmp \201\n B\200 *+5",
+
+/* Bit test optimizations */
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #1\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 0",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #2\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 1",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #4\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 2",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #8\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 3",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #16\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 4",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #32\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 5",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #64\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 6",
+" LDX _\200\n CLRH\n STHX ?acc\n LDHX #128\n JSR ?and\n CPHX #0\n B\201 \202\n JMP \203",
+	" Jmp \203\n&\200 \201 \202 7",
+
+"&\200 \201 *+5 \202",				"&\200 \201 *+6 \202",
+"&\200 EQ \201 \202",				" BRCLR \202,_\200,\201",
+"&\200 NE \201 \202",				" BRSET \202,_\200,\201",
+
+/* Misc. optimizations */
+" STHX ?acc\n LDHX #2\n JSR ?mul",	" JSR ?add\n STHX ?acc",
+" LDHX #0",							" CLRX\n CLRH",
+" AIS #\200\n AIS #\201",			" AIS #\200+\201",
+" JSR nargs",						"",
+
+0 };
+
+char *not_table[] = {
+	"EQ",	"NE",
+	"LE",	"GT",
+	"GE",	"LT",
+	"LS",	"HI",
+	"HS",	"LO",
+0 };
