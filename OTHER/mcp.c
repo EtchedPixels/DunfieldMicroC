@@ -14,28 +14,24 @@
 
 #include <stdio.h>
 #ifndef _MICROC_
-	#include <dos.h>		/* Non MICRO-C only */
-	#include <ctype.h>		/* Non MICRO-C only */
-	#include "microc.h"		/* Non MICRO-C only */
+#include <stdio.h>		/* Non MICRO-C only */
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>		/* Non MICRO-C only */
+#include "microc.h"		/* Non MICRO-C only */
 #endif
 
 /*
  * The following two macros define strings for handling
  * directories, and are operating system dependant.
  */
-#define	INCLUDE_DIR	"\\mc"	/* default 'include' directory */
-#define	DIR_END		"\\"	/* string to join filename to directory */
+#define	INCLUDE_DIR	"/mc"	/* default 'include' directory */
+#define	DIR_END		"/"	/* string to join filename to directory */
 
 /* Misc. fixed parameters */
 #define	LINE_SIZE	200		/* maximum size of input line */
-#ifndef DEMO
-	#define MACROS	1000	/* number of macros allowed (500) */
-	#define	MPOOL	50000	/* string space alloted to macro pool (25000) */
-#else
-	#define MACROS	100		/* Number of macros allowed */
-	#define	MPOOL	1000	/* String space alloted to macro pool */
-	#include "c:\project\demonote.txt"
-#endif
+#define MACROS		1000		/* number of macros allowed (500) */
+#define	MPOOL		50000		/* string space alloted to macro pool (25000) */
 #define	PARAMETERS	10		/* maximum # parameters to a macro */
 #define	PARM_POOL	300		/* parameter names & definitions */
 #define	INCL_DEPTH	5		/* maximum depth of include files */
@@ -158,6 +154,7 @@ fprint(fmt) char *fmt;
  */
 get_time_date()
 {
+#if 0
 	union REGS r;
 
 	r.h.ah = 0x2C;
@@ -171,13 +168,14 @@ get_time_date()
 	day = r.h.dl;
 	month = r.h.dh;
 	year = r.x.cx;
+#endif	
 }
 #endif
 
 /*
  * Main program, read lines and write them to the output file
  */
-main(argc, argv)
+int main(argc, argv)
 	int argc;
 	char *argv[];
 {
@@ -240,11 +238,7 @@ main(argc, argv)
 		output_fp = stdout;
 
 	if(!quiet)
-#ifdef DEMO
-		fputs("DDS MICRO-C Preprocessor (Demo)\n?COPY.TXT 1989-2005 Dave Dunfield\n**See COPY.TXT**.\n", stderr);
-#else
 		fputs("DDS MICRO-C Preprocessor\n?COPY.TXT 1989-2005 Dave Dunfield\n**See COPY.TXT**.\n", stderr);
-#endif
 
 /*
  * Read preprocessed lines from the input file and
@@ -277,7 +271,7 @@ main(argc, argv)
 /*
  * Test for a valid character to start a name
  */
-isname(c)
+int isname(c)
 	char c;
 {
 	return ((c >= 'a') && (c <= 'z'))
@@ -288,7 +282,7 @@ isname(c)
 /*
  * Test for valid character in a name.
  */
-is_name(c)
+int is_name(c)
 	char c;
 {
 	return isname(c) || isdigit(c);
@@ -297,7 +291,7 @@ is_name(c)
 /*
  * Skip to next non-blank (space or tab) in buffer
  */
-skip_blanks()
+int skip_blanks()
 {
 	while((*input_ptr == ' ') || (*input_ptr == '\t'))
 		++input_ptr;
@@ -307,7 +301,7 @@ skip_blanks()
 /*
  * Test for a string in input stream
  */
-match(ptr)
+int match(ptr)
 	char *ptr;
 {
 	register char *ptr1;
@@ -352,7 +346,7 @@ severe_error(msg)
 /*
  * Test for more macro parameters
  */
-more_parms()
+int more_parms()
 {
 	register char c;
 
@@ -366,7 +360,7 @@ more_parms()
 /*
  * Skip over a comment + copy to the output file if necessary
  */
-skip_comment(flag)
+int skip_comment(flag)
 	char flag;
 {
 	int comment_depth;
@@ -486,7 +480,7 @@ nofix:
 /*
  * Resolve special symbol names
  */
-special_symbol()
+int special_symbol()
 {
 	unsigned x;
 	static char *months[] = { "???", "Jan", "Feb", "Mar", "Apr",
@@ -537,7 +531,7 @@ special_symbol()
 /*
  * Lookup a word from the input stream to see if it is a macro
  */
-lookup_macro(eflag)
+int lookup_macro(eflag)
 	char eflag;
 {
 	register int i;
@@ -641,7 +635,7 @@ resolve_line()
 /*
  * Test for "if" processing enabled, and prepare for "if"
  */
-test_if()
+int test_if()
 {
 	define_pool[--if_top] = if_flag;	/* Stack current if status */
 	if(!(if_flag & IF_TRUE)) {			/* If disabled...*/
@@ -654,7 +648,7 @@ test_if()
 /*
  * Read a line & perform pre-processing
  */
-read_line()
+int read_line()
 {
 	int i;
 	register char c;
@@ -710,9 +704,6 @@ read_line()
 		else if(if_flag & IF_TRUE) {
 			if(match("define")) {		/* define a new macro */
 				if(macro >= MACROS) {
-#ifdef DEMO
-					fputs(demo_text, stderr);
-#endif
 					severe_error("Too many macro definitions"); }
 				define_index[macro] = define_ptr;
 				if(!isname(*input_ptr)) {
@@ -770,9 +761,6 @@ read_line()
 							*define_ptr++ = c; }
 					skip_blanks(); }
 				if(define_ptr >= (define_pool+MPOOL)) {
-#ifdef DEMO
-					fputs(demo_text, stderr);
-#endif
 					severe_error("Out of memory"); }
 				*define_ptr++ = 0;
 				++macro; }
@@ -833,7 +821,7 @@ read_line()
 /*
  * Get a numerical data value from the input stream
  */
-get_value()
+int get_value()
 {
 	unsigned num;
 	num = 0;
@@ -863,7 +851,7 @@ get_value()
 /*
  * Process a numerical expression in the input stream.
  */
-expression()
+int expression()
 {
 	unsigned value;
 
@@ -916,5 +904,7 @@ expression()
 			default:
 			error:
 				line_error("Invalid operator in expression");
-				return 0; } }
+				return 0;
+		}
+	}
 }
