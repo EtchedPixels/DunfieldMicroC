@@ -656,17 +656,19 @@ get_number(base, digits)
  *
  ** 32 bit compiler users... you must insure that 'x' will only
  ** contain the last 2 characters read from the input file.
+ *
+ * Tweaked AC 2023: use x & 0xff so portably builds on 32bit
  */
 skip_comment()
 {
 	unsigned x;
 
 	x = 0;
-	do
-		if((x = (x << 8) + read_char()) == (('/' << 8) + '*')) {
+	do {
+		if((x = ((x & 0xff) << 8) + read_char()) == (('/' << 8) + '*')) {
 			skip_comment();
 			x = 0; }
-	while(x != (('*' << 8) + '/'));
+	} while(x != (('*' << 8) + '/'));
 }
 
 /*
@@ -771,6 +773,7 @@ read_line()
 		else
 			input_pos = input_line; }
 
+/* TODO: does not allow them to be indented */
 /* handle '#' preprocessor directives */
 	if(match("#define")) {					/* define statement */
 		if(define_top >= MAX_DEFINE)

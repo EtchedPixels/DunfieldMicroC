@@ -17,6 +17,7 @@
  *
  *	LITER_POOL, SYMBOL_SIZE, MAX_SYMBOL, DEFINE_POOL, MAX_DEFINE
  */
+ 
 #define LINE_SIZE	250			/* size of input line */
 #define	FILE_SIZE	64			/* maximum size of file name */
 #define SYMBOL_SIZE	15			/* # significant chars in symbol name */
@@ -29,17 +30,15 @@
 #define MAX_ERRORS	10			/* # error before termination forced */
 #define MAX_DIMS	500			/* maximum # active array dimensions */
 #define MAX_DEFINE	150			/* maximum # define sumbols */
-#define DEFINE_POOL 2000		/* size of define string space */
-
+#define DEFINE_POOL	2000			/* size of define string space */
 #ifndef DEMO
-	#define MAX_SYMBOL	1000	/* maximum # active symbols */
-	#define LITER_POOL	20000	/* size of literal string space */
+#define MAX_SYMBOL	1000		/* maximum # active symbols */
+#define LITER_POOL	20000		/* size of literal string space */
 #else
-	#define MAX_SYMBOL	50		/* maximum # active symbols */
-	#define LITER_POOL	500		/* size of literal string space */
-	#define	MAX_LINES	500		/* Maximum # source lines */
+#define MAX_SYMBOL	50		/* maximum # active symbols */
+#define LITER_POOL	500		/* size of literal string space */
+#define	MAX_LINES	500		/* Maximum # source lines */
 #endif
-
 /*
  * Bits found in the "type" entry of symbol table, also
  * used on the expression stack to keep track of element types,

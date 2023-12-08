@@ -40,11 +40,11 @@ extern char symbolic;				/* Symbolic output */
 
 #ifdef DEMO
 extern char demo_text[];
-char hello[] = { "DDS MICRO-C "#CPU" Compiler (Demo)\n\
+char hello[] = { "DDS MICRO-C "CPU" Compiler (Demo)\n\
 ?COPY.TXT 1988-2005 Dave Dunfield\n\
 **See COPY.TXT**.\n" };
 #else
-char hello[] = { "DDS MICRO-C "#CPU" Compiler\n\
+char hello[] = { "DDS MICRO-C "CPU" Compiler\n\
 ?COPY.TXT 1988-2005 Dave Dunfield\n\
 **See COPY.TXT**.\n" };
 #endif
@@ -157,12 +157,26 @@ put_str(ptr, file)
 
 /*
  * Stack previous input file & open a new one
+ * name is a cpp include string with delimiters
  */
 f_open(name)
 	char *name;
 {
 	FILE *fp;
+	char *p;
 
+	if (*name == '"') {
+		name++;
+		p = name;
+		while(*p && *p != '"')
+			p++;
+		/* Should error check */
+		*p = 0;
+	} else {
+		/* TODO: < > */
+		severe_error("quote expected");
+		return -1;
+	}
 	if(fp = fopen(name, "r")) {
 		fp_table[file_depth+1] = fp;
 		return -1; }
