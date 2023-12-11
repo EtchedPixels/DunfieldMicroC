@@ -17,6 +17,8 @@
 #include <stdio.h>		/* Non MICRO-C only */
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <time.h>
 #include <ctype.h>		/* Non MICRO-C only */
 #include "microc.h"		/* Non MICRO-C only */
 #endif
@@ -68,7 +70,7 @@ static unsigned char if_flag = IF_TRUE | IF_WAS_TRUE | IF_ELSE;
 /* misc. variables and flags */
 static unsigned line_number, error_count, Index;
 static unsigned char comment, dupwarn, quiet, linum;
-static unsigned hour, minite, second, day, month, year;
+static unsigned hour, minute, second, day, month, year;
 
 /* include library directory path */
 static char *library = INCLUDE_DIR;
@@ -115,25 +117,28 @@ register fprint(args) char *args;
 	*output_ptr = 0;
 }
 #else
-fprint(fmt) char *fmt;
+void fprint(const char *fmt, ...)
 {
-	unsigned v, *a, sp, w;
+	va_list a;
+	unsigned v, sp, w;
 	char stack[6], s;
 	register char c;
+	char *p;
 
-	a = &fmt;
+	va_start(a, fmt);
 	while(c = *fmt++) {
 		if(c == '%')  {
-			v = *++a;
 			switch(*fmt++) {
 			case 's' :		/* String output */
-				while(*(char*)v)
-					*output_ptr++ = *(char*)v++;
+				p = va_arg(a, char *);
+				while(*p)
+					*output_ptr++ = *p++;
 				continue;
 			case '2' : w = 2; s = 0; goto do_num;
 			case 'u' :		/* Numeric output */
 				w = 0;
 			do_num:
+				v = va_arg(a, int);
 				sp = 0;
 				do
 					stack[sp++] = v % 10;
@@ -147,28 +152,22 @@ fprint(fmt) char *fmt;
 				continue; } }
 		*output_ptr++ = c; }
 	*output_ptr = 0;
+	va_end(a);
 }
 
 /*
  * Get current time from DOS
  */
-get_time_date()
+void get_time_date()
 {
-#if 0
-	union REGS r;
-
-	r.h.ah = 0x2C;
-	int86(0x21, &r, &r);
-	hour = r.h.ch;
-	minite = r.h.cl;
-	second = r.h.dh;
-
-	r.h.ah = 0x2A;
-	int86(0x21, &r, &r);
-	day = r.h.dl;
-	month = r.h.dh;
-	year = r.x.cx;
-#endif	
+	time_t t = time(NULL);
+	struct tm *tm = gmtime(&t);
+	hour = tm->tm_hour;
+	minute = tm->tm_min;
+	second = tm->tm_sec;
+	day = tm->tm_mday;
+	month = tm->tm_mon + 1;
+	year = tm->tm_year + 1900;
 }
 #endif
 
@@ -186,7 +185,7 @@ int main(argc, argv)
 	define_ptr = define_pool;	/* Set up macro pool base */
 
 #ifdef _MICROC_
-	get_time(&hour, &minite, &second);
+	get_time(&hour, &minute, &second);
 	get_date(&day, &month, &year);
 #else
 	get_time_date();
@@ -495,14 +494,14 @@ int special_symbol()
 			goto tstend; }
 		if(match("_TIME__")) {	/* Current time */
 			if(*input_ptr != '{') {
-				fprint("%2:%2:%2", hour, minite, second);
+				fprint("%2:%2:%2", hour, minute, second);
 				goto tstend; }
 			for(;;) {
 				switch(x = *++input_ptr) {
 				case 's' : x = second;		goto pr2;
-				case 'm' : x = minite;		goto pr2;
+				case 'm' : x = minute;		goto pr2;
 				case 'H' : x = hour;		goto pr2;
-				case 'D' : x = day;			goto pr2;
+				case 'D' : x = day;		goto pr2;
 				case 'M' : x = month;		goto pr2;
 				case 'y' : x = year%100;	goto pr2;
 				case 'h' : if(x = hour%12)	goto pr2;
